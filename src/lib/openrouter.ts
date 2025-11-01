@@ -776,7 +776,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
         'X-Title': 'AI Visibility Tracker - Brand Validation'
       },
       body: JSON.stringify({
-        model: MODEL_FAST, // Use gpt-4o-mini for fast validation
+        model: MODEL_PROMPT_2, // Use gpt-5-nano for fast validation
         messages: [
           {
             role: 'system',
