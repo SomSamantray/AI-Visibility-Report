@@ -26,9 +26,11 @@ export async function POST(request: NextRequest) {
     const topicsData = await generateTopicsAndQueries(institutionName);
     console.log(`✅ Generated ${topicsData.topics.length} topics`);
 
-    // Use corrected institution name from Prompt 1 (not user input)
+    // Use corrected institution name and location from Prompt 1 (not user input)
     const correctedInstitutionName = topicsData.institution_name;
+    const location = topicsData.location;
     console.log(`✅ Institution name corrected: "${institutionName}" → "${correctedInstitutionName}"`);
+    console.log(`✅ Location identified: ${location}`);
 
     // 3. Create analysis record
     console.log('💾 Step 2: Creating analysis record...');
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
     // 5. Start background processing (non-blocking)
     console.log('🚀 Step 4: Starting background processing...\n');
     // Don't await - let it run in background
-    processAnalysis(analysis.id).catch(error => {
+    processAnalysis(analysis.id, location).catch(error => {
       console.error(`❌ Background processing failed for ${analysis.id}:`, error);
     });
 

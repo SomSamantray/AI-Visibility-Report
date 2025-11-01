@@ -84,6 +84,7 @@ export interface Source {
 // OpenRouter API Types
 export interface TopicsAndQueriesResponse {
   institution_name: string;
+  location: string;
   institution_type: string;
   research_notes: ResearchNotes;
   topics: TopicData[];

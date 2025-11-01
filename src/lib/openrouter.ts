@@ -385,6 +385,7 @@ Self-Check (must pass before responding)
 JSON Schema (STRICT)
 {
   "institution_name": "<CORRECTED FULL OFFICIAL NAME - NOT the user's input>",
+  "location": "<Country only - e.g., India, USA, UK, Canada, Australia>",
   "institution_type": "<Higher Education | Coaching/EdTech | K-12>",
   "topics": [
     {
@@ -429,7 +430,8 @@ STRICT OUTPUT RULES:
 
 Answer Generation Instructions:
 • Research deeply using web search to find the most comprehensive, current information
-• Answer the user query using 9-10 bullet points ONLY
+- Use location as a parameter to generate answers themed around the location.
+• Answer the user query using 10 bullet points ONLY
 • Be completely neutral and factual — select brands/institutions based purely on relevance, quality, and search results
 • DO NOT favor any specific brand — let web search results determine which brands to mention
 • Include the top, most relevant institutes/brands/companies that genuinely match the query
@@ -953,6 +955,7 @@ export async function generateTopicsAndQueries(
  */
 export async function processBatchQueries(
   focusBrand: string,
+  location: string,
   queries: Query[]
 ): Promise<BatchQueryResult[]> {
   if (!OPENROUTER_API_KEY) {
@@ -969,7 +972,9 @@ export async function processBatchQueries(
     // Process all queries in parallel
     const queryPromises = queries.map(async (queryObj, i) => {
       const queryText = queryObj.query_text;
-      console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
+      // Append location to query in format: "Query Location - {location}"
+      const queryWithLocation = `${queryText} Location - ${location}`;
+      console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}... (Location: ${location})`);
 
       try {
         const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
@@ -989,7 +994,7 @@ export async function processBatchQueries(
               },
               {
                 role: 'user',
-                content: `Query: ${queryText}`
+                content: `Query: ${queryWithLocation}`
               }
             ],
             temperature: 0.3,
