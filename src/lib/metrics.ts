@@ -34,7 +34,12 @@ export function calculateAverageRank(queries: Query[]): number {
 export function calculateCompetitorStats(
   queries: Query[],
   focusBrand: string
-): Competitor[] {
+): Array<{
+  brand_name: string;
+  mention_count: number;
+  mention_percentage: number;
+  average_rank: number;
+}> {
   const competitorMap = new Map<string, { count: number; ranks: number[] }>();
 
   queries.forEach(query => {
@@ -67,7 +72,11 @@ export function calculateCompetitorStats(
  * 4. Calculate Top Cited Sources
  * Returns sorted list of sources by citation count
  */
-export function calculateTopSources(queries: Query[]): Source[] {
+export function calculateTopSources(queries: Query[]): Array<{
+  url: string;
+  domain: string;
+  citation_count: number;
+}> {
   const urlMap = new Map<string, number>();
 
   queries.forEach(query => {
