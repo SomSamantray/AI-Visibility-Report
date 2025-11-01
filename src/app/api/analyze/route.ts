@@ -26,12 +26,16 @@ export async function POST(request: NextRequest) {
     const topicsData = await generateTopicsAndQueries(institutionName);
     console.log(`✅ Generated ${topicsData.topics.length} topics`);
 
+    // Use corrected institution name from Prompt 1 (not user input)
+    const correctedInstitutionName = topicsData.institution_name;
+    console.log(`✅ Institution name corrected: "${institutionName}" → "${correctedInstitutionName}"`);
+
     // 3. Create analysis record
     console.log('💾 Step 2: Creating analysis record...');
     const { data: analysis, error: analysisError } = await supabaseAdmin
       .from('analyses')
       .insert({
-        institution_name: institutionName,
+        institution_name: correctedInstitutionName, // Use corrected name
         institution_type: topicsData.institution_type,
         research_notes: topicsData.research_notes,
         topics: topicsData.topics,
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
         topic_id: topicRecord.id,
         query_text: prompt,
         query_order: promptIndex + 1,
-        focused_brand: institutionName,
+        focused_brand: correctedInstitutionName, // Use corrected name for brand detection
         status: 'pending'
       }));
 
