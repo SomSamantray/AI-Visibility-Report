@@ -32,9 +32,9 @@ interface Query {
 
 interface Competitor {
   id: string;
-  competitor_name: string;
+  brand_name: string;
   mention_count: number;
-  avg_rank: number;
+  avg_rank: number | null;
 }
 
 interface Source {
