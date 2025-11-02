@@ -141,111 +141,111 @@ Once identified, apply the relevant framework below.
 Research Frameworks
 🏛 Higher Education Institutions (Universities, Colleges, Institutes)
 Conduct web research across the following avenues and factors:
-Academic Reputation & Ranking
+Academic Reputation & Ranking for Higher Education Institutions (Universities, Colleges, Institutes)
 • NIRF, QS, Times, and national/state rankings.
 • Public perception, awards, and accreditation reputation.
 
-Faculty Quality
+Faculty Quality for Higher Education Institutions (Universities, Colleges, Institutes)
 • Faculty qualifications, diversity, experience, accessibility, student-faculty ratio.
 
-Accreditations & Certifications
+Accreditations & Certifications for Higher Education Institutions (Universities, Colleges, Institutes)
 • NAAC, NBA, UGC, AICTE, ABET, AACSB, ISO, etc.
 
-Placements & Alumni
+Placements & Alumni for Higher Education Institutions (Universities, Colleges, Institutes)
 • Placement statistics, recruiting companies, salary data, alumni success stories.
 
-Infrastructure & Facilities
+Infrastructure & Facilities for Higher Education Institutions (Universities, Colleges, Institutes)
 • Labs, hostels, libraries, innovation centers, sports, and technology infrastructure.
 
-Course Curriculum & Flexibility
+Course Curriculum & Flexibility for Higher Education Institutions (Universities, Colleges, Institutes)
 • Industry relevance, interdisciplinary options, internships, exchange programs.
 
-Location & Accessibility
+Location & Accessibility for Higher Education Institutions (Universities, Colleges, Institutes)
 • Geographic appeal based on the location obtained from the institute name, connectivity, cost of living, safety, climate.
 
-Cost & Financial Support
+Cost & Financial Support for Higher Education Institutions (Universities, Colleges, Institutes)
 • Tuition fees, scholarships, bank loans, affordability, international fees.
 
-Student Life & Campus Culture
+Student Life & Campus Culture for Higher Education Institutions (Universities, Colleges, Institutes)
 • Clubs, fests, housing, diversity, mentorship, inclusion, community.
 
-Industry Linkages & Research
+Industry Linkages & Research for Higher Education Institutions (Universities, Colleges, Institutes)
 • Collaborations, patents, publications, incubators, industry projects.
 
-Alumni Network & Mentorship
+Alumni Network & Mentorship for Higher Education Institutions (Universities, Colleges, Institutes)  
 • Global presence, mentorship initiatives, alumni achievements.
 
-Government & Institutional Reports
+Government & Institutional Reports for Higher Education Institutions (Universities, Colleges, Institutes)
 • Transparency, audits, government rankings, media coverage.
 
 🎓 Coaching / EdTech Institutions
 Research and analyze the following avenues:
-Reputation & Track Record
+Reputation & Track Record for Coaching / EdTech Institutions
 • Historical performance, success rate in exams, student testimonials.
 
-Faculty Expertise
+Faculty Expertise for Coaching / EdTech Institutions
 • Credentials, pedagogy, teaching experience, public recognition.
 
-Course Curriculum
+Course Curriculum for Coaching / EdTech Institutions
 • Exam alignment, structure, coverage, and adaptability to new exam formats.
 
-Batch Size & Personalization
+Batch Size & Personalization for Coaching / EdTech Institutions
 • Student–teacher ratio, doubt clearing mechanisms, mentoring models.
 
-Study Materials
+Study Materials for Coaching / EdTech Institutions
 • Quality of notes, recorded content, test papers, e-resources.
 
-Mock Tests & Evaluation
+Mock Tests & Evaluation for Coaching / EdTech Institutions
 • Frequency, analytics feedback, adaptive testing systems.
 
-Fees & Scholarships
+Fees & Scholarships for Coaching / EdTech Institutions
 • Transparency, affordability, EMIs, scholarships, free demo access.
 
-Infrastructure & Delivery
+Infrastructure & Delivery for Coaching / EdTech Institutions
 • Classroom quality, online tech stack, platform UX, physical infrastructure.
 
-Flexibility & Accessibility
+Flexibility & Accessibility for Coaching / EdTech Institutions
 • Online/offline hybrid models, class recordings, weekend batches.
 
-Student Support & Counseling
+Student Support & Counseling for Coaching / EdTech Institutions
 • Helplines, mentorship, performance tracking, parent communication.
 
-Safety & Security (for physical institutes)
+Safety & Security for Coaching / EdTech Institutions (for physical institutes)
 • Campus safety measures, attendance policies.
 
-Reviews & Recommendations
+Reviews & Recommendations for Coaching / EdTech Institutions    
 • Third-party feedback, alumni endorsements, public perception.
 
 🏫 Schools / K-12 Institutions
 Research and analyze:
-Academic Reputation & Board Affiliation
+Academic Reputation & Board Affiliation for Schools / K-12 Institutions
 • CBSE, ICSE, IB, Cambridge, state boards, results history.
 
-Teaching Quality
+Teaching Quality for Schools / K-12 Institutions
 • Teacher qualifications, student engagement, academic support.
 
-Infrastructure & Facilities
+Infrastructure & Facilities for Schools / K-12 Institutions
 • Classrooms, playgrounds, libraries, digital tools, labs.
 
-Fees & Scholarships
+Fees & Scholarships for Schools / K-12 Institutions
 • Affordability, sibling discounts, merit-based scholarships.
 
-Safety & Security
+Safety & Security for Schools / K-12 Institutions
 • Child protection policies, CCTV, campus protocols.
 
-Co-curricular & Extracurricular Activities
+Co-curricular & Extracurricular Activities for Schools / K-12 Institutions
 • Sports, arts, clubs, events, competitions.
 
-Location & Accessibility
+Location & Accessibility for Schools / K-12 Institutions
 • Neighborhood safety based on the location obtained from institute analysis, commute options, catchment demographics.
 
-Student-Teacher Ratio
+Student-Teacher Ratio for Schools / K-12 Institutions
 • Personal attention, individual learning support.
 
-Admission Process
+Admission Process for Schools / K-12 Institutions
 • Age cut-offs, documents required, entrance assessment, deadlines.
 
-Parent Engagement
+Parent Engagement for Schools / K-12 Institutions         
 • Communication channels, PTMs, transparency, feedback systems.
 
 Topic & Prompt Generation Rules (Brand-Agnostic)
@@ -264,7 +264,7 @@ Generate 10 Search Phrases per Topic
   - Semantically diverse and exhaustive for the topic.
 
 Semantic Diversity Rules
-• Cover admissions, fees, rankings, placements, programs, geography, eligibility, deadlines, scholarships, infrastructure, and comparisons.
+• Cover and focus on admissions, fees, rankings, placements, programs, geography, eligibility, deadlines, scholarships, infrastructure, and comparisons.
 • Each phrase under a topic must present a unique intent.
 • Avoid repetition of structure or vocabulary.
 
@@ -273,7 +273,7 @@ For each topic, generate 10 unique, semantically distinct, and human-like search
 
 Construction Principles
 Human Search Mimicry
-• Think like a user typing into a search bar or LLM.
+• Think like a user typing into a Google Search or LLM.
 • Use keyword stacking, loose grammar, abbreviations, and year modifiers.
 • Alternate between phrase types: comparative, intent-based, exploratory, factual, constraint-based.
 
@@ -282,7 +282,7 @@ Semantic Diversity
 • Include sub-variants: fees, scholarships, deadlines, rankings, placements, online vs offline, region, admission process, etc.
 
 Lexical Variation
-• Rotate head terms: "best", "top", "cheap", "affordable", "private", "government", "ranked", "NAAC A++".
+• Rotate head terms: "best", "top", "scholarship", "affordable", "private", "government", "ranked", "Online", "Admissions"
 • Add qualifiers: Like for example "for international students", "2025 intake", "without entrance exam", "with hostel", "in India", "World", etc.
 • Mix query forms examples:
   - Keyword stack: btech admission last date punjab 2025
@@ -290,6 +290,14 @@ Lexical Variation
   - Constraint-based: mba colleges under 5 lakh fees india
   - Attribute-seeking: universities with ai data science specialization
   - Outcome-based: engineering colleges with best placements india
+ • Some more examples: 
+  - best universities for MBA in India
+  - Which scholarships cover hostel fees
+  - Highest ROI colleges in tier 2 cities
+  - Btech colleges with hostel facility 
+  - Medical colleges with masters program
+  - Placement records with salary packages in colleges
+  - top colleges with best placement opportunities
 
 Exhaustiveness
 • Across all 10 phrases, ensure a 360° view of that topic.
@@ -337,7 +345,7 @@ HARD CONSTRAINTS (apply to both topics and phrases):
 • If a brand token accidentally appears, discard and regenerate that item instantly.
 
 Semantic Diversity (per topic, across 10 phrases):
-• Cover multiple intents: admissions, fees, scholarships, eligibility, deadlines, rankings, placements, programs, geography, infrastructure, comparisons, outcomes, online vs offline.
+• Cover multiple intents: admissions, placements, programs, fees, scholarships, eligibility, deadlines, rankings, geography, infrastructure, comparisons, outcomes, online vs offline.
 • Vary style: keyword stacks, comparative, constraint-based, attribute-seeking, outcome-focused, geo/time qualified.
 • Vary wording: rotate best/top/affordable/private/government/NAAC A++/ranked/2025 intake/with hostel/without entrance exam, etc.
 • No duplicate or near-duplicate phrasing.
@@ -389,7 +397,7 @@ JSON Schema (STRICT)
   "institution_type": "<Higher Education | Coaching/EdTech | K-12>",
   "topics": [
     {
-      "topic": "<Generic, non-branded topic title>",
+      "topic": "<non-branded topic title>",
       "prompts": [
         "<non-branded human-style search phrase 1>",
         "<Search Phrase 2>",
