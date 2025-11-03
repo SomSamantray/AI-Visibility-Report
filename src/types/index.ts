@@ -86,7 +86,7 @@ export interface TopicsAndQueriesResponse {
   institution_name: string;
   location: string;
   institution_type: string;
-  research_notes: ResearchNotes;
+  research_notes?: ResearchNotes; // Optional - not returned by new universal prompt
   topics: TopicData[];
 }
 

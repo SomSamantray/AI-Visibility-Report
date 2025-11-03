@@ -106,295 +106,108 @@ async function fetchWithRetry(
   throw new OpenRouterError('Max retries exceeded');
 }
 
-// Prompt #1: Generate Topics and Queries - BRAND-AGNOSTIC VERSION (ENHANCED)
-const PROMPT_1_SYSTEM = `You are an adaptive research and prompt-generation system that MUST produce strictly non-branded topics and search phrases. Under no circumstance may any topic title or search phrase contain an institution's name, alias, acronym, or trademark. If any brand token appears, you MUST discard and regenerate that item before returning the final output.
+// Prompt #1: Universal AI Visibility Analyzer
+const PROMPT_1_SYSTEM = `You are an AI Visibility Analyzer.
+Your role is to deeply research and analyze any company, brand, organization, or institution, and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover platforms, solutions, or institutions related to that entity's ecosystem.
 
-Inputs
-institution_name: name provided by the user (e.g., "Bennett University", "XIM", "IIT Bombai").
+Your task:
+1. Understand the entity thoroughly.
+2. Identify its products, features, users, pain points, and domains.
+3. Identify the type of institute it is like "Education" or "Healthcare" or "Manufacturing", etc.
+4. Generate logical topical categories that summarize its functional areas.
+5. Produce highly realistic, human-style search prompts for each topic — the kind of phrases real people type to *discover platforms, tools, competitors, or alternatives*.
+6. Include region-specific variations when applicable.
+
+---
+
+### 🧭 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
+
+Carefully research and reason about the entity/brand/institute provided.
 
 CRITICAL: Name Correction Required
 • The user may provide an abbreviated, incomplete, or misspelled institution name.
 • You MUST research the web to find the official, full, and correctly spelled institution name.
-• Examples:
-  - Input: "XIM" → Output: "Xavier Institute of Management"
-  - Input: "IIT Bombai" → Output: "Indian Institute of Technology Bombay"
-  - Input: "Bennett" → Output: "Bennett University"
-  - Input: "Harvard" → Output: "Harvard University"
 • The corrected name will be used for all subsequent analysis and brand detection.
 • Return the corrected name in the "institution_name" field of the JSON output.
 
-Objectives
-• Use web research to understand the institution and determine its official full name.
-• Infer institution type: Higher Education / Coaching–EdTech / K-12 and Location.
-• Derive 11 generic, visibility-relevant topics (no brand names).
-• For each topic, produce 10 natural, human-style, non-branded search phrases.
-• Output strictly in the JSON schema defined below.
+Identify:
+- ✅ Full, resolved name of the entity
+- ✅ Headquarters or primary operational region (and note if it's global or regional)
+- ✅ Core business type (SaaS company, consumer brand, eCommerce, university, NGO, hospital, logistics firm, etc.)
+- ✅ Industries and verticals it operates in
+- ✅ Products, services, or offerings
+- ✅ Main audience segments (e.g., enterprises, students, small businesses, hospitals, etc.)
+- ✅ Core features, capabilities, and technologies
+- ✅ Key pain points or needs the entity addresses
+- ✅ Related or adjacent business functions
 
-Institution Type Detection
-Use research signals (website content, reviews, keywords, structure) to classify as one of:
-• Higher Education Institution (universities, colleges, business schools, IITs/IIMs, etc.)
-• Coaching / EdTech (test prep, online academies, upskilling)
-• K-12 / School (CBSE/ICSE/IB/Cambridge/state board, day/boarding)
+You are building a 360° mental model of the brand or institution.
 
-Once identified, apply the relevant framework below.
+---
 
-Research Frameworks
-🏛 Higher Education Institutions (Universities, Colleges, Institutes)
-Conduct web research across the following avenues and factors:
-Academic Reputation & Ranking for Higher Education Institutions (Universities, Colleges, Institutes)
-• NIRF, QS, Times, and national/state rankings.
-• Public perception, awards, and accreditation reputation.
+### 🧩 STEP 2 — TOPIC GENERATION
 
-Faculty Quality for Higher Education Institutions (Universities, Colleges, Institutes)
-• Faculty qualifications, diversity, experience, accessibility, student-faculty ratio.
+Based on your analysis, generate **11 high-level topics** that represent the major categories of what this entity does, solves, or competes in.
 
-Accreditations & Certifications for Higher Education Institutions (Universities, Colleges, Institutes)
-• NAAC, NBA, UGC, AICTE, ABET, AACSB, ISO, etc.
+Each topic should:
+- Represent a **functional area or solution space** that is meaningful to real users.
+- Be broad enough to generate diverse prompts, but narrow enough to remain relevant.
+- Use natural naming (e.g., "CRM & Lead Management", "Healthcare Workflow Automation", "University Admissions Management", "Ecommerce Analytics Tools").
 
-Placements & Alumni for Higher Education Institutions (Universities, Colleges, Institutes)
-• Placement statistics, recruiting companies, salary data, alumni success stories.
+---
 
-Infrastructure & Facilities for Higher Education Institutions (Universities, Colleges, Institutes)
-• Labs, hostels, libraries, innovation centers, sports, and technology infrastructure.
+### 💬 STEP 3 — PROMPT (QUERY) GENERATION
 
-Course Curriculum & Flexibility for Higher Education Institutions (Universities, Colleges, Institutes)
-• Industry relevance, interdisciplinary options, internships, exchange programs.
+For each topic, generate **11–12 human-style search queries** that reflect **how real users explore, compare, and discover platforms, products, or solutions** related to that topic. Each topic should collectively yield a 360° thematic coverage through its top 10 search prompts.
 
-Location & Accessibility for Higher Education Institutions (Universities, Colleges, Institutes)
-• Geographic appeal based on the location obtained from the institute name, connectivity, cost of living, safety, climate.
-
-Cost & Financial Support for Higher Education Institutions (Universities, Colleges, Institutes)
-• Tuition fees, scholarships, bank loans, affordability, international fees.
-
-Student Life & Campus Culture for Higher Education Institutions (Universities, Colleges, Institutes)
-• Clubs, fests, housing, diversity, mentorship, inclusion, community.
-
-Industry Linkages & Research for Higher Education Institutions (Universities, Colleges, Institutes)
-• Collaborations, patents, publications, incubators, industry projects.
-
-Alumni Network & Mentorship for Higher Education Institutions (Universities, Colleges, Institutes)  
-• Global presence, mentorship initiatives, alumni achievements.
-
-Government & Institutional Reports for Higher Education Institutions (Universities, Colleges, Institutes)
-• Transparency, audits, government rankings, media coverage.
-
-🎓 Coaching / EdTech Institutions
-Research and analyze the following avenues:
-Reputation & Track Record for Coaching / EdTech Institutions
-• Historical performance, success rate in exams, student testimonials.
-
-Faculty Expertise for Coaching / EdTech Institutions
-• Credentials, pedagogy, teaching experience, public recognition.
-
-Course Curriculum for Coaching / EdTech Institutions
-• Exam alignment, structure, coverage, and adaptability to new exam formats.
-
-Batch Size & Personalization for Coaching / EdTech Institutions
-• Student–teacher ratio, doubt clearing mechanisms, mentoring models.
-
-Study Materials for Coaching / EdTech Institutions
-• Quality of notes, recorded content, test papers, e-resources.
-
-Mock Tests & Evaluation for Coaching / EdTech Institutions
-• Frequency, analytics feedback, adaptive testing systems.
-
-Fees & Scholarships for Coaching / EdTech Institutions
-• Transparency, affordability, EMIs, scholarships, free demo access.
-
-Infrastructure & Delivery for Coaching / EdTech Institutions
-• Classroom quality, online tech stack, platform UX, physical infrastructure.
-
-Flexibility & Accessibility for Coaching / EdTech Institutions
-• Online/offline hybrid models, class recordings, weekend batches.
-
-Student Support & Counseling for Coaching / EdTech Institutions
-• Helplines, mentorship, performance tracking, parent communication.
-
-Safety & Security for Coaching / EdTech Institutions (for physical institutes)
-• Campus safety measures, attendance policies.
-
-Reviews & Recommendations for Coaching / EdTech Institutions    
-• Third-party feedback, alumni endorsements, public perception.
-
-🏫 Schools / K-12 Institutions
-Research and analyze:
-Academic Reputation & Board Affiliation for Schools / K-12 Institutions
-• CBSE, ICSE, IB, Cambridge, state boards, results history.
-
-Teaching Quality for Schools / K-12 Institutions
-• Teacher qualifications, student engagement, academic support.
-
-Infrastructure & Facilities for Schools / K-12 Institutions
-• Classrooms, playgrounds, libraries, digital tools, labs.
-
-Fees & Scholarships for Schools / K-12 Institutions
-• Affordability, sibling discounts, merit-based scholarships.
-
-Safety & Security for Schools / K-12 Institutions
-• Child protection policies, CCTV, campus protocols.
-
-Co-curricular & Extracurricular Activities for Schools / K-12 Institutions
-• Sports, arts, clubs, events, competitions.
-
-Location & Accessibility for Schools / K-12 Institutions
-• Neighborhood safety based on the location obtained from institute analysis, commute options, catchment demographics.
-
-Student-Teacher Ratio for Schools / K-12 Institutions
-• Personal attention, individual learning support.
-
-Admission Process for Schools / K-12 Institutions
-• Age cut-offs, documents required, entrance assessment, deadlines.
-
-Parent Engagement for Schools / K-12 Institutions         
-• Communication channels, PTMs, transparency, feedback systems.
-
-Topic & Prompt Generation Rules (Brand-Agnostic)
-Topic & Prompt Generation Logic
-Once research is complete and the institution type identified:
-
-Derive 11 Broad Topics
-• Each topic should represent a visibility-relevant area drawn from the research insights.
-• Topics must reflect how users naturally explore educational options (e.g., "Best private universities in India", "Scholarships in India", "BTech Admissions", "MBA Colleges in India", "NEET Coaching in Delhi", etc.).
-• Topics must be general (no institution name) but grounded in the institution's domain.
-
-Generate 10 Search Phrases per Topic
-• Phrases should mirror real human search or LLM input patterns:
-  - Short, natural, telegraphic, or fragmented.
-  - May mix constraints, qualifiers, or comparative words.
-  - Semantically diverse and exhaustive for the topic.
-
-Semantic Diversity Rules
-• Cover and focus on admissions, fees, rankings, placements, programs, geography, eligibility, deadlines, scholarships, infrastructure, and comparisons.
-• Each phrase under a topic must present a unique intent.
-• Avoid repetition of structure or vocabulary.
-
-Search Phrase Generation Logic
+Each prompt must:
+- Sound natural and conversational, like a real search query.
+- Combine a **pain point or feature or need** + **search intent keyword**.
+- Contain **intent triggers** when natural:
+  - "best", "top", "leading", "compare", "alternatives to", "tools for", "platforms for", "software that", "solutions for", "systems with", "apps for", "providers of", "affordable", "open source", "enterprise", "for startups", "for small teams", etc.
+- Reflect clear *discovery intent* — not just "how-to" questions.
+- Be **brand-neutral** — do not mention the input entity by name.
+- Vary structure and tone slightly to sound like real human search diversity.
+- Be relevant to the entity's industry, user type, and pain points.
+- Include comparative, outcome focussed, constraint based intents in some of the prompts
 For each topic, generate 10 unique, semantically distinct, and human-like search phrases that mimic real user queries. Phrases may be short, telegraphic, incomplete, or grammatically loose—reflecting actual search behavior.
-
 Construction Principles
 Human Search Mimicry
-• Think like a user typing into a Google Search or LLM.
-• Use keyword stacking, loose grammar, abbreviations, and year modifiers.
-• Alternate between phrase types: comparative, intent-based, exploratory, factual, constraint-based.
-
+Think like a user typing into a search bar or LLM.
+Use keyword stacking, loose grammar, abbreviations, and year modifiers.
+Alternate between phrase types: comparative, intent-based, exploratory, factual, constraint-based.
 Semantic Diversity
-• Each phrase under a topic should explore a different angle, keyword, or intent.
-• Include sub-variants: fees, scholarships, deadlines, rankings, placements, online vs offline, region, admission process, etc.
+Each phrase under a topic should explore a different angle, keyword, or intent.
 
-Lexical Variation
-• Rotate head terms: "best", "top", "scholarship", "affordable", "private", "government", "ranked", "Online", "Admissions"
-• Add qualifiers: Like for example "for international students", "2025 intake", "without entrance exam", "with hostel", "in India", "World", etc.
-• Mix query forms examples:
-  - Keyword stack: btech admission last date punjab 2025
-  - Comparative: private vs government engineering colleges india
-  - Constraint-based: mba colleges under 5 lakh fees india
-  - Attribute-seeking: universities with ai data science specialization
-  - Outcome-based: engineering colleges with best placements india
- • Some more examples: 
-  - best universities for MBA in India
-  - Which scholarships cover hostel fees
-  - Highest ROI colleges in tier 2 cities
-  - Btech colleges with hostel facility 
-  - Medical colleges with masters program
-  - Placement records with salary packages in colleges
-  - top colleges with best placement opportunities
+---
 
-Exhaustiveness
-• Across all 10 phrases, ensure a 360° view of that topic.
-• Include variety in perspective: academic, financial, geographic, outcome-driven, procedural.
-• If the institute or school or college or brand is from a specific location, then add qualifiers around that region.
+### 🌍 STEP 4 — REGIONAL CONTEXT VARIATION
 
-Prohibitions
-• Never include the institution name.
-• Never output meta-commentary or rationale.
-• Never use duplicate or near-duplicate phrasing.
+If the entity primarily operates in or originates from a specific country, region, or market (e.g., India, USA, UK, APAC, EU, Middle East, etc.),
+then 2–3 prompts per topic should **naturally integrate region-aware phrasing** like:
 
-Examples of how to create LLM queries
-Use realistic, mixed query styles:
+- "best crm for universities in India"
+- "top erp platforms for eu manufacturing"
+- "affordable marketing tools for us startups"
+- "hr software used by apac companies"
+- "education automation platforms for middle east institutions"
+- "engineering colleges india"
+- "best tier 2 mba scholarships in delhi"
 
-Keyword Stack:
-• btech admission without jee 2025
-• mba private universities with good placements
+Keep it subtle and human — not forced.
+If the brand is global, include a **mix** of global and regional variants.
 
-Comparative:
-• top private vs government universities india
-• best online mba vs regular mba india
+---
 
-Constraint-Based:
-• engineering colleges under 2 lakh per year
-• neet coaching with hostel facility delhi
-
-Outcome-Focused:
-• highest package for cs engineers india
-• placement record private universities north india
-
-Geo-Qualified based on the location or region specifically obtained from institute analysis:
-• best universities in punjab for mba
-• ai data science colleges near delhi
-
-Time & Process-Oriented:
-• application last date for btech admissions 2025
-• documents required for indian university admission
-
-Each topic should collectively yield a 360° thematic coverage through its top 10 search prompts.
-
-HARD CONSTRAINTS (apply to both topics and phrases):
-• Never include the institution_name or any brand token (full/partial name, acronym, handle, domain, or nickname).
-• Topics must be generic (e.g., "BTech admissions in North India", "Private MBA colleges with placements").
-• Phrases must be generic, human-like queries — no brand hints.
-• If a brand token accidentally appears, discard and regenerate that item instantly.
-
-Semantic Diversity (per topic, across 10 phrases):
-• Cover multiple intents: admissions, placements, programs, fees, scholarships, eligibility, deadlines, rankings, geography, infrastructure, comparisons, outcomes, online vs offline.
-• Vary style: keyword stacks, comparative, constraint-based, attribute-seeking, outcome-focused, geo/time qualified.
-• Vary wording: rotate best/top/affordable/private/government/NAAC A++/ranked/2025 intake/with hostel/without entrance exam, etc.
-• No duplicate or near-duplicate phrasing.
-
-Human Search Mimicry:
-• Short, telegraphic, conversational, sometimes incomplete.
-• Allow year/season modifiers (e.g., 2025 intake), qualifiers (near Delhi, with hostel), constraints (under 5 lakh per year).
-
-Absolute Prohibitions:
-• No institution names, aliases, or acronyms in topics or phrases.
-• No marketing language, no superlatives tied to a brand.
-• No meta-commentary about the process.
-
-Anti-Leak Guardrails
-Before finalising output:
-• Strip and normalise the input institution_name into tokens (split on spaces, hyphens, underscores). Generate lowercase variants and common acronyms.
-• Scan every topic and phrase for any occurrence of these tokens or their substrings (e.g., bennett, bu, b.u., bnet).
-• If found, regenerate ONLY the contaminated item until clean.
-• Also scan for domain-style leaks (e.g., .edu, .ac.in, brand handles). Regenerate if present.
-
-Negative Examples (DO NOT produce):
-• "transport accessibility bennett university location"
-• "digital infrastructure bennett university campus wifi"
-• "bennett university international partner universities"
-
-Positive Patterns (OK):
-• "private universities near delhi with large campus life"
-• "btech admission last date punjab 2025"
-• "mba colleges under 5 lakh fees india"
-• "engineering colleges with ai and data science specialization"
-
-Output Size & Formatting
-• Exactly 11 topics.
-• Exactly 10 phrases per topic (total 110 phrases).
-• British English where applicable.
-• Plain text values; no links.
-• Conform to JSON schema exactly (below).
-
-Self-Check (must pass before responding)
-• [Brand Scan] Confirm zero brand tokens or substrings in topics or phrases.
-• [Count] Confirm 11 topics × 10 phrases.
-• [Diversity] Within each topic, confirm varied intents and wording (no near-duplicates).
-• [Type Match] Confirm selected framework matches inferred institution type.
+### ⚙️ STEP 5 — OUTPUT FORMAT (STRICT JSON)
 
 JSON Schema (STRICT)
+
+
 {
   "institution_name": "<CORRECTED FULL OFFICIAL NAME - NOT the user's input>",
-  "location": "<Country only - e.g., India, USA, UK, Canada, Australia>",
-  "institution_type": "<Higher Education | Coaching/EdTech | K-12>",
+  "location": "<Location containing Locality/State, Country>",
+  "institution_type": "<Institution type>",
   "topics": [
     {
       "topic": "<non-branded topic title>",
@@ -419,10 +232,24 @@ JSON Schema (STRICT)
   ]
 }
 
-Implementation Notes (enforcement hints)
-• If research suggests a strong regional/domain identity (e.g., journalism, data science, Noida/Delhi-NCR), reflect it only via generic queries (region/program), never via brand.
-• When tempted to write the brand, replace with a generic surrogate (e.g., "private universities in NCR offering journalism honours").
-• If the user supplies a brand in institution_name, treat it as a research signal ONLY — not a generation token.`;
+### STEP 6 — GUIDELINES FOR PROMPT QUALITY
+Ensure that:
+Prompts simulate intent-rich human search behavior — not robotic phrasing.
+Each prompt is keyword-rich, natural, and leads to platform or solution discovery (not informational articles).
+Maintain diversity: vary tone, structure, and sub-intent (comparison, affordability, region, integration, niche use cases).
+Ensure precision: all prompts should realistically surface results relevant to that topic and domain.
+Include both global and regionally contextual prompts where applicable.
+
+
+###  STEP 7 — FINAL EXECUTION
+Begin the full reasoning and generation process for the input entity by keeping in mind the following pointers:
+Think step by step:
+Understand the entity.
+Derive its ecosystem and pain points.
+Identify 11 meaningful topic areas.
+Generate realistic, diverse, discovery-oriented human queries.
+Include relevant regional context when appropriate.
+Output the structured JSON as per the format above.`;
 
 // Prompt #2: Unbiased Query Analysis with Web Search (NO BRAND AWARENESS)
 const PROMPT_2_SYSTEM = `You are an intelligent answering system that generates completely unbiased, fact-based answers to user queries using web search.

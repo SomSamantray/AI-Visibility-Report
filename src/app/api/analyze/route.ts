@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
       .insert({
         institution_name: correctedInstitutionName, // Use corrected name
         institution_type: topicsData.institution_type,
-        research_notes: topicsData.research_notes,
         topics: topicsData.topics,
         status: 'pending',
         total_queries: topicsData.topics.length * 10,
