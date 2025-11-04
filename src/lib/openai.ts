@@ -1,22 +1,21 @@
-// OpenRouter API Client for AI Visibility Tracker
+// OpenAI API Client for AI Visibility Tracker
 import type { TopicsAndQueriesResponse, Prompt1RawResponse, BatchQueryResponse, BatchQueryResult, Query } from '@/types';
 import { supabaseAdmin } from './supabase';
 import { findBestMatch } from 'string-similarity';
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const API_BASE_URL = 'https://openrouter.ai/api/v1';
-const MODEL_WITH_WEB_SEARCH = 'openai/gpt-5-nano:online'; // Model with web search capability for Prompt #1
-const MODEL_PROMPT_2 = 'openai/gpt-5-nano:online'; // Model for Prompt #2 batch processing with web search
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const API_BASE_URL = 'https://api.openai.com/v1';
+const MODEL_GPT5_NANO = 'gpt-5-nano'; // GPT-5 Nano for prompts with web search and low reasoning
 
-// Error class for OpenRouter API errors
-export class OpenRouterError extends Error {
+// Error class for OpenAI API errors
+export class OpenAIError extends Error {
   constructor(
     message: string,
     public statusCode?: number,
     public response?: any
   ) {
     super(message);
-    this.name = 'OpenRouterError';
+    this.name = 'OpenAIError';
   }
 }
 
@@ -103,137 +102,191 @@ async function fetchWithRetry(
     }
   }
 
-  throw new OpenRouterError('Max retries exceeded');
+  throw new OpenAIError('Max retries exceeded');
 }
 
 // Prompt #1: Universal AI Visibility Analyzer
 const PROMPT_1_SYSTEM = `You are an AI Visibility Analyzer.
-Your role is to deeply research and analyze any company, brand, organization, or institution, and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover platforms, tools, solutions, vendors, or institutions related to that entity's ecosystem.
-Your task:
-Understand the entity thoroughly.
-Identify its products, features, users, pain points, and domains.
-Generate logical topical categories that summarize its functional areas.
-Produce highly realistic, human-style search prompts for each topic — the kind of phrases real people type to discover platforms, tools, competitors, or alternatives. The prompts remain brand-neutral** — do not mention the input entity/brand/institution by name. No prompt should contain any brand/institute/company/business/entity name at all - it should be completely neutral, unbiased and focus on providing discovery to users about the domain or niche the brand/institution is relevant in
-Include region-specific variations when applicable.
-Ensure every prompt strictly aligns with the topic it belongs to and is grounded in the domain, ecosystem, or problem space of the input brand. No off-topic or overly generic prompts are allowed.
-Optimize for eliciting actionable answers — real tools, platforms, vendors, brands or named institutions. Not guides, definitions, or procedural or open-ended queries not relevant for discovery.
+Your role is to deeply research and analyze any educational institution (such as schools, colleges, universities, edtech companies, or study abroad consultants), and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover institutions, platforms, tools, services, vendors, or solutions related to that entity's educational ecosystem and domain.
+
+Your Task:
+Understand the entity thoroughly: Research the institution and its ecosystem, such as:
+
+
+Educational institutions (schools, colleges, universities)
+
+
+Edtech companies and platforms
+
+
+Study abroad agencies or consultants
+
+
+Identify its offerings:
+
+
+What are its products, features, and services tailored to the education sector?
+
+
+How does it serve students, educators, institutions, or administrators?
+
+
+Generate relevant topics for educational entities:
+
+
+Topics should reflect educational technology, services, admissions, student lifecycle, educational programs, and more.
+
+
+Produce highly realistic, brand-neutral search prompts for each topic:
+
+
+Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
+
+
+The prompts should simulate real search queries made by students, parents, educators, and institutions in discovering educational platforms, services, and institutions
+
+
+Avoid mentioning specific brand names — make the queries neutral and focused on platform or institution or brand discovery in the educational domain.
+
+
+Short tail and long tail human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to the topic.
+
+
+Include region-specific variations when applicable, especially for educational institutions, since educational systems can vary greatly by region, country, or state.
+
+
+If the entity is regional, at least 50% of the prompts must include region, city, or country references (e.g., "universities in India", "best schools in Delhi NCR", "study abroad agencies in UAE").
+
+
+If the entity is global, include both global and regional queries (e.g., "top study abroad consultants worldwide", "best edtech platforms for K-12").
+
+
+Ensure each prompt is focused on educational institutions and solutions (e.g., education management and admissions, student recruitment for placements, online learning courses, study abroad services, college admissions, placements, scholarships etc.).
+
+
+Reject prompts that focus on non-educational products or concepts like "internal business processes," "best practices," or unrelated generic platforms.
+
+
+Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
+
+
+Every query should lead to actionable answers: institutions, platforms, educational services, that users can discover and evaluate.
+
+
 
 🧭 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
-Carefully research and reason about the entity provided ({{brand_name}}).
+Carefully research and reason about the educational institution provided ({{brand_name}}).
 Identify:
-✅ Full, actual name of the entity
-✅ Headquarters or primary operational region - Locality and Country
-✅ Core business type (SaaS company, consumer brand, eCommerce, university, NGO, hospital, logistics firm, etc.)
-✅ Industries and verticals it operates in
-✅ Products, services, or offerings
-✅ Main audience segments (e.g., enterprises, students, small businesses, hospitals, etc.)
-✅ Core features, capabilities, and technologies
-✅ Key pain points or needs the entity addresses
-✅ Related or adjacent business functions
-✅ Use this full analysis to define the topical boundaries. Every generated prompt must fit strictly within this ecosystem and must relate directly to the entity's offerings or market domain. Reject any prompt that does not.
+✅ Full, actual name of the entity (e.g., a school, university, or edtech company)
 
-🧩 STEP 2 — TOPIC GENERATION
-Based on your analysis, generate 11 high-level topics that represent the major categories of what this entity does, solves, or competes in.
+
+✅ Headquarters or primary operational region (Locality and Country) — important for region-based queries (e.g., "Top colleges in India", "Best study abroad agencies in the US").
+
+
+✅ Core business type (e.g., educational institution, online course provider, study abroad agency, or educational technology company)
+
+
+✅ Industries and verticals it operates in (e.g., K-12 education, higher education, online education, study abroad consulting, etc.)
+
+
+✅ Products, services, or offerings (e.g., university admissions, online learning tools, study abroad guidance services, coaching, graduation or post graduation, etc.)
+
+
+✅ Main audience segments (e.g., students, parents, teachers, edtech professionals, higher education institutions, school administrators, etc.)
+
+
+✅ Core features, capabilities, and technologies (e.g., CRM for student management, online learning platforms, admissions software, career counseling tools)
+
+
+✅ Key pain points or needs the entity addresses (e.g., offering best coaching and preparation, graduation or post graduation or Ph.D in various fields, improving learning outcomes, assisting with study abroad applications)
+
+
+✅ Related or adjacent business functions (e.g., student recruitment, online course providers, study visa consulting)
+
+
+Use this full analysis to define the topical boundaries. Every generated prompt must fit strictly within the education ecosystem and relate directly to the institution's offerings or market domain. Reject any prompt that does not.
+
+STEP 2 — TOPIC GENERATION
+Based on your analysis, generate 11 high-level topics that represent the major categories of what this educational entity does, solves, or competes in.
 Each topic should:
-Represent a functional area or solution space that is meaningful to real users
-Be broad enough to generate diverse prompts, but narrow enough to remain relevant
-Use natural naming (e.g., "CRM & Lead Management", "Healthcare Workflow Automation", "University Admissions Management", "Ecommerce Analytics Tools")
-Avoid overlapping topics. Each must cover a distinct need, function, or product area
-Reflect real-world discovery and comparison intent — i.e., how users would explore similar platforms, tools, or institutions in the same industry
+Represent a functional area or solution space relevant to educational institutions or services.
 
-💬 STEP 3 — PROMPT (QUERY) GENERATION
-For each topic, generate 11 human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to that topic.
+
+Be broad enough to generate diverse prompts, but narrow enough to remain focused on education.
+
+
+Use natural naming (e.g., "University Admissions for Engineering, "K-12 Education Schools", "Study Abroad Services", "Edtech Platforms for Higher Ed").
+
+
+Avoid overlapping topics. Each must cover a distinct need, function, or product area (e.g., admissions platforms vs. learning management systems).
+
+
+Reflect real-world discovery and comparison intent — i.e., how students, parents, or educational professionals would explore or compare similar educational institutions, services or solutions.
+
+
+
+
+STEP 3 — PROMPT (QUERY) GENERATION
+Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
+For each topic, generate 11 that are short tail and long tail human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to the topic.
 Each topic should collectively yield a 360° thematic coverage through its search prompts.
+If the entity is local or regionally-focused, ensure 50% or more of the prompts include region-specific markers (e.g., city, region, country). If the entity operates globally, include a mix of global and regional prompts.
 Each prompt must:
-Be brand-neutral** — do not mention the input entity/brand/institution by name. No prompt should contain any brand/institute/company/business/entity name at all - it should be completely neutral, unbiased and focus on providing discovery to users about the domain or niche the brand/institution is relevant in
-Sound natural and conversational, like a real search query
-Combine a pain point, feature, or need + search intent keyword
+Sound natural and conversational — like a real long tail or short tail search query.
+
+
+Be relevant to the educational sector and its various services, domain specific niche like academic reputation and ranking, admissions, placements, scholarships, pedagogy, faculty, administration, fees, pricing, student support and counselling, course curriculum, batch sizes, flexibility and accessibility.
+
+
+Combine a pain point or feature, or need + search intent keyword (e.g., "best schools for Standard 9th", "affordable admissions in universities in India", "top btech colleges in Noida", "placement opportunities for students", "top MBA colleges india 2025").
+
+
 Contain intent triggers when natural, such as:
-best, top, leading, compare, alternatives to, tools for, platforms for, software that, solutions for, systems with, apps for, providers of, affordable, open source, enterprise, for startups, for small teams, etc.
-Reflect clear discovery intent — not "how-to" or informational questions
-Be brand-neutral — do not mention the input entity by name
-Vary structure and tone slightly to sound like real human search diversity
-Be relevant to the entity's industry, user type, and pain points
-Include comparative, outcome-focused, and constraint-based intents in some prompts
-Ensure each query specifically answers to provide discovery or comparison of platforms, tools, vendors, or institutions — not internal processes, guides, or definitions.
-If the entity is local or regionally-focused, ensure at least 50% of the prompts include a region, city, or country reference (e.g., India, Delhi NCR, Bengaluru, APAC, UAE).
-If the entity operates globally, include a mix of global and regional queries.
-Reject any prompt that does not directly elicit platform discovery results (e.g., general advice, articles, or best practices).
 
-⚠️ Special Case:
- If the input entity is an educational institution (e.g., a college or university), avoid using terms like "tools", "aggregators", "platforms", "portals", or other product-centric keywords.
- Instead, use phrasing that reflects institutional discovery and comparison — such as "top colleges for…", "universities offering…", "best programs in…", "institutes in [region] with…".
 
-Construction Principles
-✅ Human Search Mimicry
-Think like a real user typing in a search bar or LLM
-Use loose grammar, keyword stacking, and telegraphic phrasing
-Include year or temporal context when natural (e.g., "best crm tools 2025")
-Alternate between query types:
-Comparative → "top erp tools for apac manufacturers"
-Intent-based → "platforms that automate student onboarding"
-Exploratory → "solutions for multi-campus enrollment management"
-Constraint-based → "crm with whatsapp automation under $1000 india"
-✅ Semantic Diversity
-Each phrase within a topic must explore a distinct intent, angle, or keyword combination
-Avoid repetition or near-duplicates
-Every prompt should add new discovery value
-Balance between feature-based, outcome-based, cost-based, and region-based phrasing
+best, top, leading, compare, alternatives to, for, platforms for, software that, solutions for, affordable, upskilling, coaching preparations, etc.
 
-🌍 STEP 4 — REGIONAL CONTEXT VARIATION
-Based on the type of entity being analyzed, apply the following strict rules for location-specificity in prompt generation:
+
+Reflect discovery intent — not how-to questions or broad informational articles.
+
+
+Be brand-neutral — do not mention any brand, institution, or company by name.
+
+
+Vary structure and tone slightly to simulate real human search behavior (e.g., "compare engineering btech vs bArch" vs. "which college is best for medical admissions").
+
+
+Ensure each prompt leads to actionable discovery — real institutions and services,
+
+
+
+STEP 4 — REGIONAL CONTEXT VARIATION
+Based on the type of educational entity being analyzed, apply the following strict rules for location-specificity in prompt generation:
 🎓 For Educational Institutions (e.g., universities, colleges, schools):
-At least 50% of all prompts in each topic must include region-, city-, or locality-level specificity, such as:
-"engineering colleges in Tamil Nadu"
-"mba programs delhi ncr"
-"best private universities in south india"
-"top mba colleges tier 2 cities india"
-Use regionally relevant qualifiers that reflect how students, parents, or searchers evaluate educational options.
-Focus on discovery of institutions, programs, campuses, or academic services — not software tools or products.
-Avoid platform-like terms like: "tools", "portals", "software", "crm", "automation suite" unless the institution sells such platforms (e.g., EdTech companies).
+At least 50% of all prompts per topic must include region-, city-, or locality-level specificity (e.g., "best colleges in Delhi NCR", "top study abroad consultants in UAE", "engineering colleges in Tamil Nadu").
 
-🏢 For Companies, Brands, or SaaS Businesses:
-Use country-level specificity only, unless the company operates hyper-locally.
-Examples:
-"best crm platforms in india"
-"affordable hr tools for us startups"
-"top logistics platforms in apac"
-If the brand has global operations, include a balanced mix of both global and regional queries.
-Avoid unnecessary city-level specificity unless the business is highly localized (e.g., "solar installation firms in jaipur").
 
-❌ Reject any prompt that violates this rule.
- ✅ Use location markers naturally and in line with how real users search for either institutions or tools.
-✅ These may include as per the location and region and country analysed for the brand/institute:
- "india", "delhi ncr", "bengaluru", "tier 2 cities", "apac", "uae", "south india", etc.
-✅ Acceptable placements:
-As part of a modifier ("best crm for colleges in india")
-As a constraint ("crm platforms with call routing for bengaluru teams")
-As a comparison angle ("top admissions software for tier 2 colleges vs metro campuses")
+Focus on discovery of institutions, programs, campuses, or academic services, not software tools.
 
-❌ Reject any prompt that does not include a regional marker if it's required.
-For local or regional brands, this is non-negotiable. Region-specificity is mandatory in 50%+ of queries per topic.
-Examples:
-"best crm for universities in India"
-"top erp platforms for India manufacturing"
-"affordable marketing tools for US startups"
-"education automation platforms for middle east institutions"
-"crm for admissions teams delhi ncr"
-"student recruitment platforms for tier 2 indian colleges"
 
-Additional rules:
-Use localized terminology or compliance references where appropriate
- (e.g., "DPDP India", "FERPA compliance", "GST billing", "SOC 2 vendors")
-If the entity is local or regional, enforce that at least half of all prompts across all topics include a clear location reference (country, state, or city).
-Do not force location names where irrelevant (e.g., SaaS brands with a global audience).
-Global entities should include a mix of international and regional contexts.
+Use location markers naturally, reflecting how students, parents, and searchers would evaluate educational options.
+
+
+For EdTech, and Study Abroad Services:
+Use country-level specificity only unless the business is hyper-local.
+
+
+If the entity operates globally, include both global and regional queries (e.g., "top coaching institute for international students in India" vs "best study abroad consultants for engineering in Germany").
+
+
+Do NOT force location names where irrelevant, but make 50%+ of prompts regionally relevant for local or regional entities.
 
 ⚙️ STEP 5 — OUTPUT FORMAT (STRICT JSON)
 Return output using this strict and clean JSON structure:
-
 {
   "company": {
-    "name": "<Actual Correct Company or Institution Name>",
-    "location": "<Headquarters Locality, Country>"
+    "name": "<Actual Correct Institution Name>",
+    "location": "<City, State, Country>"
   },
   "topics": [
     {
@@ -250,33 +303,30 @@ Return output using this strict and clean JSON structure:
   ]
 }
 
-⚠️ Important Output Rules:
-No trailing commas
-No explanatory text outside the JSON
-No markdown or commentary — only valid JSON
-All queries must be enclosed in double quotes
-Arrays and nesting must be syntactically correct
 
 🧠 STEP 6 — GUIDELINES FOR PROMPT QUALITY
-Prompts must simulate intent-rich, human search behavior that results in platform, software, or institutional discovery.
+Prompts must simulate intent-rich, human search behavior that results in platform, service, or institutional discovery.
+
+
 Each prompt must:
-Be keyword-rich and conversational
-Include search intent and discovery phrasing
-Lead directly to identifiable solutions (platforms, institutions, vendors)
-Include diversity:
-Comparisons
-Feature or capability mentions
-Pricing or value qualifiers
-Integration or compliance references
-Regional variations (especially if local)
-Never include prompts that yield generic advice, academic guides, or conceptual information
-Stay tightly within the domain ecosystem of the entity analyzed
-Ensure that if the entity is local or regional, 50% of the prompts reflect that country.`;
+
+
+Be keyword-rich and conversational.
+
+
+Lead directly to discoverable solutions (platforms, institutions, vendors).
+
+
+Include diversity in comparison, feature mentions, pricing, compliance, or regional focus.
+
+
+Stay tightly within the education ecosystem of the analyzed entity.
+
+
+Ensure 50% of prompts reflect region/country specificity if the entity is local/regional.`;
 
 // Prompt #2: Unbiased Query Analysis with Web Search (NO BRAND AWARENESS)
 const PROMPT_2_SYSTEM = `You are an intelligent answering system that generates completely unbiased, fact-based answers to user queries using web search.
-
-CRITICAL: You have ZERO knowledge of any "target" or "focus" brand. Answer purely based on merit and web search results.
 
 STRICT OUTPUT RULES:
 • You MUST return ONLY valid JSON (no conversational text, no questions, no clarifications)
@@ -290,8 +340,8 @@ Answer Generation Instructions:
 - Use location as a parameter to generate answers themed around the location.
 • Answer the user query using 10 bullet points ONLY
 • Be completely neutral and factual — select brands/institutions based purely on relevance, quality, and search results
-• DO NOT favor any specific brand — let web search results determine which brands to mention
-• Include the top, most relevant institutes/brands/companies that genuinely match the query
+• DO NOT favor any specific brand completely — let web search results determine which brands to mention
+• Include the top, most relevant institutes/brands/companies that genuinely match the query and as provided in the User prompt.
 • Each bullet point should represent one unique fact or brand mention
 • Mention brands in the natural order they emerge from your research (most relevant first)
 
@@ -309,8 +359,10 @@ Website Citation:
 • List all website URLs you referenced during your research
 • Use full URLs (e.g., "https://www.example.com/page")
 
-JSON Output Format:
+Strict JSON Output Format:
 Return ONLY this JSON structure (no additional text, no markdown, no conversational responses):
+
+
 {
   "Answer": "Complete unbiased answer in bullet points",
   "brands_mentioned": [
@@ -625,28 +677,19 @@ ${JSON.stringify(brandsMentioned, null, 2)}
 - Focus: "Meritto", List: ["Salesforce", "HubSpot", "Meritto EdTech"] → {"found": true, "matched_name": "Meritto EdTech", "position": 3}`;
 
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/responses`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'AI Visibility Tracker - Brand Validation'
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: MODEL_PROMPT_2, // Use gpt-5-nano for fast validation
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a precise brand/entity name matcher. Always respond in valid JSON format.'
-          },
-          {
-            role: 'user',
-            content: validationPrompt
-          }
-        ],
-        temperature: 0.1, // Low temperature for consistency
-        max_tokens: 500
+        model: MODEL_GPT5_NANO, // Use gpt-5-nano for fast validation
+        input: `You are a precise brand/entity name matcher. Always respond in valid JSON format.\n\n${validationPrompt}`,
+        max_output_tokens: 500,
+        reasoning: {
+          effort: 'low'
+        }
       })
     });
 
@@ -663,7 +706,47 @@ ${JSON.stringify(brandsMentioned, null, 2)}
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+
+    // Validate response structure for Responses API
+    // The response has an 'output' array with message items
+    if (!data.output || !Array.isArray(data.output)) {
+      console.error('  ❌ LLM validation - Invalid response structure (no output array)');
+      return {
+        found: false,
+        matched_name: null,
+        position: null,
+        confidence: 'low',
+        reasoning: 'Invalid validation response structure'
+      };
+    }
+
+    // Find the message output item (skip reasoning items)
+    const messageItem = data.output.find((item: any) => item.type === 'message');
+    if (!messageItem || !messageItem.content || !Array.isArray(messageItem.content)) {
+      console.error('  ❌ LLM validation - No message in output');
+      return {
+        found: false,
+        matched_name: null,
+        position: null,
+        confidence: 'low',
+        reasoning: 'No message in validation response'
+      };
+    }
+
+    // Extract text from the content
+    const textContent = messageItem.content.find((c: any) => c.type === 'output_text');
+    if (!textContent || !textContent.text) {
+      console.error('  ❌ LLM validation - No text content in message');
+      return {
+        found: false,
+        matched_name: null,
+        position: null,
+        confidence: 'low',
+        reasoning: 'No text in validation response'
+      };
+    }
+
+    const content = textContent.text;
 
     if (!content) {
       console.error('  ❌ LLM validation returned empty response');
@@ -707,51 +790,44 @@ ${JSON.stringify(brandsMentioned, null, 2)}
 
 /**
  * Generate topics and queries for an institution (Prompt #1)
- * Uses web search via gpt-5-nano:online
+ * Uses gpt-5-nano with web search
  */
 export async function generateTopicsAndQueries(
   institutionName: string
 ): Promise<TopicsAndQueriesResponse> {
-  if (!OPENROUTER_API_KEY) {
-    throw new OpenRouterError('OPENROUTER_API_KEY is not configured');
+  if (!OPENAI_API_KEY) {
+    throw new OpenAIError('OPENAI_API_KEY is not configured');
   }
 
   try {
     console.log(`📝 Generating topics and queries for: ${institutionName}`);
 
-    const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/responses`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-        'X-Title': 'AI Visibility Tracker'
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: MODEL_WITH_WEB_SEARCH,
-        messages: [
-          {
-            role: 'system',
-            content: PROMPT_1_SYSTEM
-          },
-          {
-            role: 'user',
-            content: `The Institute name is ${institutionName}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 40000,
-        max_completion_tokens: 20000,
+        model: MODEL_GPT5_NANO,
+        input: `${PROMPT_1_SYSTEM}\n\nThe Institute name is ${institutionName}`,
+        max_output_tokens: 20000,
         reasoning: {
           effort: 'low'
-        }
+        },
+        tools: [
+          {
+            type: 'web_search'
+          }
+        ],
+        tool_choice: 'auto'
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new OpenRouterError(
-        `OpenRouter API error: ${response.statusText}`,
+      throw new OpenAIError(
+        `OpenAI API error: ${response.statusText}`,
         response.status,
         errorText
       );
@@ -761,29 +837,36 @@ export async function generateTopicsAndQueries(
 
     // Log the full response structure for debugging
     console.log('📦 API Response structure:', JSON.stringify({
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length,
-      hasMessage: !!data.choices?.[0]?.message,
-      hasContent: !!data.choices?.[0]?.message?.content,
-      contentLength: data.choices?.[0]?.message?.content?.length
+      hasOutput: !!data.output,
+      outputLength: data.output?.length
     }));
 
-    // Validate response structure
-    if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+    // Validate response structure for Responses API
+    // The response has an 'output' array with message items
+    if (!data.output || !Array.isArray(data.output)) {
       console.error('❌ Invalid API response structure:', JSON.stringify(data, null, 2));
-      throw new OpenRouterError('API returned invalid response structure (no choices array)');
+      throw new OpenAIError('API returned invalid response structure (no output array)');
     }
 
-    if (!data.choices[0].message) {
-      console.error('❌ No message in response:', JSON.stringify(data.choices[0], null, 2));
-      throw new OpenRouterError('API returned no message in response');
+    // Find the message output item (skip reasoning items)
+    const messageItem = data.output.find((item: any) => item.type === 'message');
+    if (!messageItem || !messageItem.content || !Array.isArray(messageItem.content)) {
+      console.error('❌ No message in output:', JSON.stringify(data.output, null, 2));
+      throw new OpenAIError('API returned no message in output');
     }
 
-    const content = data.choices[0].message.content;
+    // Extract text from the first content item
+    const textContent = messageItem.content.find((c: any) => c.type === 'output_text');
+    if (!textContent || !textContent.text) {
+      console.error('❌ No text content in message:', JSON.stringify(messageItem.content, null, 2));
+      throw new OpenAIError('API returned no text content');
+    }
+
+    const content = textContent.text;
 
     if (!content) {
-      console.error('❌ Empty content in response. Full response:', JSON.stringify(data, null, 2));
-      throw new OpenRouterError('API returned empty content. The model may have hit token limits or timed out.');
+      console.error('❌ Empty content in response.');
+      throw new OpenAIError('API returned empty content.');
     }
 
     // Extract and parse JSON (handles markdown, malformed responses)
@@ -791,7 +874,7 @@ export async function generateTopicsAndQueries(
 
     // Validate response structure
     if (!parsed.topics || !Array.isArray(parsed.topics) || parsed.topics.length === 0) {
-      throw new OpenRouterError('Invalid response: missing or empty topics array');
+      throw new OpenAIError('Invalid response: missing or empty topics array');
     }
 
     console.log(`✅ Successfully generated ${parsed.topics.length} topics`);
@@ -809,24 +892,24 @@ export async function generateTopicsAndQueries(
     return transformedResponse;
   } catch (error) {
     console.error('❌ Failed to generate topics:', error);
-    if (error instanceof OpenRouterError) {
+    if (error instanceof OpenAIError) {
       throw error;
     }
-    throw new OpenRouterError(`Failed to generate topics: ${error}`);
+    throw new OpenAIError(`Failed to generate topics: ${error}`);
   }
 }
 
 /**
  * Process a batch of queries (Prompt #2 - processes 5 queries at once)
  * Now accepts full Query objects and saves to DB immediately when each completes
- * Uses gpt-4o-mini:online for faster processing
+ * Uses gpt-5-nano with web search for processing
  */
 export async function processBatchQueries(
   focusBrand: string,
   queries: Query[]
 ): Promise<BatchQueryResult[]> {
-  if (!OPENROUTER_API_KEY) {
-    throw new OpenRouterError('OPENROUTER_API_KEY is not configured');
+  if (!OPENAI_API_KEY) {
+    throw new OpenAIError('OPENAI_API_KEY is not configured');
   }
 
   if (queries.length === 0 || queries.length > 5) {
@@ -839,35 +922,39 @@ export async function processBatchQueries(
     // Process all queries in parallel
     const queryPromises = queries.map(async (queryObj, i) => {
       const queryText = queryObj.query_text;
-      console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
+      const includeInstitutionMention = queryObj.include_institution_mention || false;
+
+      // Construct user prompt - add institution mention instruction if flagged
+      const userPrompt = includeInstitutionMention
+        ? `Query: ${queryText}\n\nYou must mandatorily and positively include 1 bullet point about ${focusBrand} in-the-middle of this query's answer.`
+        : `Query: ${queryText}`;
+
+      if (includeInstitutionMention) {
+        console.log(`  ℹ️  Query ${i + 1}/${queries.length} (with institution mention): ${queryText.substring(0, 50)}...`);
+      } else {
+        console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
+      }
 
       try {
-        const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/responses`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-            'X-Title': 'AI Visibility Tracker'
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            model: MODEL_PROMPT_2,
-            messages: [
-              {
-                role: 'system',
-                content: PROMPT_2_SYSTEM
-              },
-              {
-                role: 'user',
-                content: `Query: ${queryText}`
-              }
-            ],
-            temperature: 0.3,
-            max_tokens: 50000,
-            max_completion_tokens: 20000,
+            model: MODEL_GPT5_NANO,
+            input: `${PROMPT_2_SYSTEM}\n\n${userPrompt}`,
+            max_output_tokens: 20000,
             reasoning: {
               effort: 'low'
-            }
+            },
+            tools: [
+              {
+                type: 'web_search'
+              }
+            ],
+            tool_choice: 'auto'
           })
         });
 
@@ -895,9 +982,10 @@ export async function processBatchQueries(
 
         const data = await response.json();
 
-        // Validate response structure
-        if (!data.choices?.[0]?.message?.content) {
-          console.error(`  ❌ Query ${i + 1} - Invalid response structure`);
+        // Validate response structure for Responses API
+        // The response has an 'output' array with message items
+        if (!data.output || !Array.isArray(data.output)) {
+          console.error(`  ❌ Query ${i + 1} - Invalid response structure (no output array)`);
           const errorResult = createErrorResult(queryText, focusBrand);
 
           // Save error result to DB immediately
@@ -918,7 +1006,55 @@ export async function processBatchQueries(
           return errorResult;
         }
 
-        const content = data.choices[0].message.content;
+        // Find the message output item (skip reasoning items)
+        const messageItem = data.output.find((item: any) => item.type === 'message');
+        if (!messageItem || !messageItem.content || !Array.isArray(messageItem.content)) {
+          console.error(`  ❌ Query ${i + 1} - No message in output`);
+          const errorResult = createErrorResult(queryText, focusBrand);
+
+          // Save error result to DB immediately
+          await supabaseAdmin
+            .from('queries')
+            .update({
+              answer: errorResult.answer,
+              brands_mentioned: errorResult.brands_mentioned,
+              focused_brand: errorResult.focused_brand,
+              focused_brand_rank: errorResult.focused_brand_rank,
+              visibility: parseInt(errorResult.visibility) || 0,
+              websites_cited: errorResult.websites_cited,
+              status: 'failed',
+              processed_at: new Date().toISOString()
+            })
+            .eq('id', queryObj.id);
+
+          return errorResult;
+        }
+
+        // Extract text from the content
+        const textContent = messageItem.content.find((c: any) => c.type === 'output_text');
+        if (!textContent || !textContent.text) {
+          console.error(`  ❌ Query ${i + 1} - No text content in message`);
+          const errorResult = createErrorResult(queryText, focusBrand);
+
+          // Save error result to DB immediately
+          await supabaseAdmin
+            .from('queries')
+            .update({
+              answer: errorResult.answer,
+              brands_mentioned: errorResult.brands_mentioned,
+              focused_brand: errorResult.focused_brand,
+              focused_brand_rank: errorResult.focused_brand_rank,
+              visibility: parseInt(errorResult.visibility) || 0,
+              websites_cited: errorResult.websites_cited,
+              status: 'failed',
+              processed_at: new Date().toISOString()
+            })
+            .eq('id', queryObj.id);
+
+          return errorResult;
+        }
+
+        const content = textContent.text;
 
         // Extract and parse JSON (handles markdown, malformed responses)
         const parsed = extractAndParseJSON(content, `Prompt #2 (Query ${i + 1})`);
@@ -1004,10 +1140,10 @@ export async function processBatchQueries(
     return results;
   } catch (error) {
     console.error('❌ Batch processing failed:', error);
-    if (error instanceof OpenRouterError) {
+    if (error instanceof OpenAIError) {
       throw error;
     }
-    throw new OpenRouterError(`Failed to process batch queries: ${error}`);
+    throw new OpenAIError(`Failed to process batch queries: ${error}`);
   }
 }
 

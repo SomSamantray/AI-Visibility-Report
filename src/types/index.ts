@@ -56,6 +56,7 @@ export interface Query {
   focused_brand_rank?: number;
   visibility?: number;
   websites_cited?: string[];
+  include_institution_mention?: boolean;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   processed_at?: string;
   error_message?: string;

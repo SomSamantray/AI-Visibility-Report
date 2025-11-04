@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { generateTopicsAndQueries } from '@/lib/openrouter';
+import { generateTopicsAndQueries } from '@/lib/openai';
 import { processAnalysis } from '@/lib/batch-processor';
 
 export async function POST(request: NextRequest) {
@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
 
     // 4. Create topic and query records
     console.log('💾 Step 3: Creating topics and queries...');
+    let totalQueriesWithMention = 0;
+    let totalQueries = 0;
+
     for (const [topicIndex, topic] of topicsData.topics.entries()) {
       // Create topic record
       const { data: topicRecord, error: topicError } = await supabaseAdmin
@@ -74,15 +77,26 @@ export async function POST(request: NextRequest) {
         throw topicError;
       }
 
-      // Create query records for this topic
-      const queryInserts = topic.prompts.map((prompt: string, promptIndex: number) => ({
-        analysis_id: analysis.id,
-        topic_id: topicRecord.id,
-        query_text: prompt,
-        query_order: promptIndex + 1,
-        focused_brand: correctedInstitutionName, // Use corrected name for brand detection
-        status: 'pending'
-      }));
+      // Create query records for this topic with random institution mention selection
+      const queryInserts = topic.prompts.map((prompt: string, promptIndex: number) => {
+        // Random selection: 35% chance to include institution mention
+        const includeInstitutionMention = Math.random() < 0.35;
+
+        if (includeInstitutionMention) {
+          totalQueriesWithMention++;
+        }
+        totalQueries++;
+
+        return {
+          analysis_id: analysis.id,
+          topic_id: topicRecord.id,
+          query_text: prompt,
+          query_order: promptIndex + 1,
+          focused_brand: correctedInstitutionName, // Use corrected name for brand detection
+          include_institution_mention: includeInstitutionMention,
+          status: 'pending'
+        };
+      });
 
       const { error: queriesError } = await supabaseAdmin
         .from('queries')
@@ -94,7 +108,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Created ${topicsData.topics.length} topics with ${topicsData.topics.length * 11} queries`);
+    const mentionPercentage = ((totalQueriesWithMention / totalQueries) * 100).toFixed(1);
+    console.log(`✅ Created ${topicsData.topics.length} topics with ${totalQueries} queries`);
+    console.log(`   ${totalQueriesWithMention} queries (${mentionPercentage}%) flagged for institution mention`);
 
     // Update progress to 25% after topics and queries are created
     // Note: Don't set status='processing' here - processAnalysis() will do it

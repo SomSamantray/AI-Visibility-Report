@@ -1,6 +1,6 @@
 // Batch Processor - Concurrent Query Processing
 import { supabaseAdmin } from './supabase';
-import { processBatchQueries, createErrorResult, OpenRouterError } from './openrouter';
+import { processBatchQueries, createErrorResult, OpenAIError } from './openai';
 import { calculateAllMetrics, updateAnalysisProgress } from './metrics';
 import type { Query, BatchQueryResult, BATCH_CONFIG as BatchConfig } from '@/types';
 
