@@ -1,12 +1,12 @@
 // OpenRouter API Client for AI Visibility Tracker
-import type { TopicsAndQueriesResponse, BatchQueryResponse, BatchQueryResult, Query } from '@/types';
+import type { TopicsAndQueriesResponse, Prompt1RawResponse, BatchQueryResponse, BatchQueryResult, Query } from '@/types';
 import { supabaseAdmin } from './supabase';
 import { findBestMatch } from 'string-similarity';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const API_BASE_URL = 'https://openrouter.ai/api/v1';
 const MODEL_WITH_WEB_SEARCH = 'openai/gpt-5-nano:online'; // Model with web search capability for Prompt #1
-const MODEL_PROMPT_2 = 'openai/gpt-5-nano'; // Model for Prompt #2 batch processing with reasoning effort low
+const MODEL_PROMPT_2 = 'openai/gpt-5-nano:online'; // Model for Prompt #2 batch processing with web search
 
 // Error class for OpenRouter API errors
 export class OpenRouterError extends Error {
@@ -108,148 +108,170 @@ async function fetchWithRetry(
 
 // Prompt #1: Universal AI Visibility Analyzer
 const PROMPT_1_SYSTEM = `You are an AI Visibility Analyzer.
-Your role is to deeply research and analyze any company, brand, organization, or institution, and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover platforms, solutions, or institutions related to that entity's ecosystem.
-
+Your role is to deeply research and analyze any company, brand, organization, or institution, and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover platforms, tools, solutions, vendors, or institutions related to that entity's ecosystem.
 Your task:
-1. Understand the entity thoroughly.
-2. Identify its products, features, users, pain points, and domains.
-3. Identify the type of institute it is like "Education" or "Healthcare" or "Manufacturing", etc.
-4. Generate logical topical categories that summarize its functional areas.
-5. Produce highly realistic, human-style search prompts for each topic — the kind of phrases real people type to *discover platforms, tools, competitors, or alternatives*.
-6. Include region-specific variations when applicable.
+Understand the entity thoroughly.
+Identify its products, features, users, pain points, and domains.
+Generate logical topical categories that summarize its functional areas.
+Produce highly realistic, human-style search prompts for each topic — the kind of phrases real people type to discover platforms, tools, competitors, or alternatives. The prompts remain brand-neutral** — do not mention the input entity/brand/institution by name. No prompt should contain any brand/institute/company/business/entity name at all - it should be completely neutral, unbiased and focus on providing discovery to users about the domain or niche the brand/institution is relevant in
+Include region-specific variations when applicable.
+Ensure every prompt strictly aligns with the topic it belongs to and is grounded in the domain, ecosystem, or problem space of the input brand. No off-topic or overly generic prompts are allowed.
+Optimize for eliciting actionable answers — real tools, platforms, vendors, brands or named institutions. Not guides, definitions, or procedural or open-ended queries not relevant for discovery.
 
----
-
-### 🧭 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
-
-Carefully research and reason about the entity/brand/institute provided.
-
-CRITICAL: Name Correction Required
-• The user may provide an abbreviated, incomplete, or misspelled institution name.
-• You MUST research the web to find the official, full, and correctly spelled institution name.
-• The corrected name will be used for all subsequent analysis and brand detection.
-• Return the corrected name in the "institution_name" field of the JSON output.
-
+🧭 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
+Carefully research and reason about the entity provided ({{brand_name}}).
 Identify:
-- ✅ Full, resolved name of the entity
-- ✅ Headquarters or primary operational region (and note if it's global or regional)
-- ✅ Core business type (SaaS company, consumer brand, eCommerce, university, NGO, hospital, logistics firm, etc.)
-- ✅ Industries and verticals it operates in
-- ✅ Products, services, or offerings
-- ✅ Main audience segments (e.g., enterprises, students, small businesses, hospitals, etc.)
-- ✅ Core features, capabilities, and technologies
-- ✅ Key pain points or needs the entity addresses
-- ✅ Related or adjacent business functions
+✅ Full, actual name of the entity
+✅ Headquarters or primary operational region - Locality and Country
+✅ Core business type (SaaS company, consumer brand, eCommerce, university, NGO, hospital, logistics firm, etc.)
+✅ Industries and verticals it operates in
+✅ Products, services, or offerings
+✅ Main audience segments (e.g., enterprises, students, small businesses, hospitals, etc.)
+✅ Core features, capabilities, and technologies
+✅ Key pain points or needs the entity addresses
+✅ Related or adjacent business functions
+✅ Use this full analysis to define the topical boundaries. Every generated prompt must fit strictly within this ecosystem and must relate directly to the entity's offerings or market domain. Reject any prompt that does not.
 
-You are building a 360° mental model of the brand or institution.
-
----
-
-### 🧩 STEP 2 — TOPIC GENERATION
-
-Based on your analysis, generate **11 high-level topics** that represent the major categories of what this entity does, solves, or competes in.
-
+🧩 STEP 2 — TOPIC GENERATION
+Based on your analysis, generate 11 high-level topics that represent the major categories of what this entity does, solves, or competes in.
 Each topic should:
-- Represent a **functional area or solution space** that is meaningful to real users.
-- Be broad enough to generate diverse prompts, but narrow enough to remain relevant.
-- Use natural naming (e.g., "CRM & Lead Management", "Healthcare Workflow Automation", "University Admissions Management", "Ecommerce Analytics Tools").
+Represent a functional area or solution space that is meaningful to real users
+Be broad enough to generate diverse prompts, but narrow enough to remain relevant
+Use natural naming (e.g., "CRM & Lead Management", "Healthcare Workflow Automation", "University Admissions Management", "Ecommerce Analytics Tools")
+Avoid overlapping topics. Each must cover a distinct need, function, or product area
+Reflect real-world discovery and comparison intent — i.e., how users would explore similar platforms, tools, or institutions in the same industry
 
----
-
-### 💬 STEP 3 — PROMPT (QUERY) GENERATION
-
-For each topic, generate **11–12 human-style search queries** that reflect **how real users explore, compare, and discover platforms, products, or solutions** related to that topic. Each topic should collectively yield a 360° thematic coverage through its top 10 search prompts.
-
+💬 STEP 3 — PROMPT (QUERY) GENERATION
+For each topic, generate 11 human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to that topic.
+Each topic should collectively yield a 360° thematic coverage through its search prompts.
 Each prompt must:
-- Sound natural and conversational, like a real search query.
-- Combine a **pain point or feature or need** + **search intent keyword**.
-- Contain **intent triggers** when natural:
-  - "best", "top", "leading", "compare", "alternatives to", "tools for", "platforms for", "software that", "solutions for", "systems with", "apps for", "providers of", "affordable", "open source", "enterprise", "for startups", "for small teams", etc.
-- Reflect clear *discovery intent* — not just "how-to" questions.
-- Be **brand-neutral** — do not mention the input entity by name.
-- Vary structure and tone slightly to sound like real human search diversity.
-- Be relevant to the entity's industry, user type, and pain points.
-- Include comparative, outcome focussed, constraint based intents in some of the prompts
-For each topic, generate 10 unique, semantically distinct, and human-like search phrases that mimic real user queries. Phrases may be short, telegraphic, incomplete, or grammatically loose—reflecting actual search behavior.
+Be brand-neutral** — do not mention the input entity/brand/institution by name. No prompt should contain any brand/institute/company/business/entity name at all - it should be completely neutral, unbiased and focus on providing discovery to users about the domain or niche the brand/institution is relevant in
+Sound natural and conversational, like a real search query
+Combine a pain point, feature, or need + search intent keyword
+Contain intent triggers when natural, such as:
+best, top, leading, compare, alternatives to, tools for, platforms for, software that, solutions for, systems with, apps for, providers of, affordable, open source, enterprise, for startups, for small teams, etc.
+Reflect clear discovery intent — not "how-to" or informational questions
+Be brand-neutral — do not mention the input entity by name
+Vary structure and tone slightly to sound like real human search diversity
+Be relevant to the entity's industry, user type, and pain points
+Include comparative, outcome-focused, and constraint-based intents in some prompts
+Ensure each query specifically answers to provide discovery or comparison of platforms, tools, vendors, or institutions — not internal processes, guides, or definitions.
+If the entity is local or regionally-focused, ensure at least 50% of the prompts include a region, city, or country reference (e.g., India, Delhi NCR, Bengaluru, APAC, UAE).
+If the entity operates globally, include a mix of global and regional queries.
+Reject any prompt that does not directly elicit platform discovery results (e.g., general advice, articles, or best practices).
+
+⚠️ Special Case:
+ If the input entity is an educational institution (e.g., a college or university), avoid using terms like "tools", "aggregators", "platforms", "portals", or other product-centric keywords.
+ Instead, use phrasing that reflects institutional discovery and comparison — such as "top colleges for…", "universities offering…", "best programs in…", "institutes in [region] with…".
+
 Construction Principles
-Human Search Mimicry
-Think like a user typing into a search bar or LLM.
-Use keyword stacking, loose grammar, abbreviations, and year modifiers.
-Alternate between phrase types: comparative, intent-based, exploratory, factual, constraint-based.
-Semantic Diversity
-Each phrase under a topic should explore a different angle, keyword, or intent.
+✅ Human Search Mimicry
+Think like a real user typing in a search bar or LLM
+Use loose grammar, keyword stacking, and telegraphic phrasing
+Include year or temporal context when natural (e.g., "best crm tools 2025")
+Alternate between query types:
+Comparative → "top erp tools for apac manufacturers"
+Intent-based → "platforms that automate student onboarding"
+Exploratory → "solutions for multi-campus enrollment management"
+Constraint-based → "crm with whatsapp automation under $1000 india"
+✅ Semantic Diversity
+Each phrase within a topic must explore a distinct intent, angle, or keyword combination
+Avoid repetition or near-duplicates
+Every prompt should add new discovery value
+Balance between feature-based, outcome-based, cost-based, and region-based phrasing
 
----
+🌍 STEP 4 — REGIONAL CONTEXT VARIATION
+Based on the type of entity being analyzed, apply the following strict rules for location-specificity in prompt generation:
+🎓 For Educational Institutions (e.g., universities, colleges, schools):
+At least 50% of all prompts in each topic must include region-, city-, or locality-level specificity, such as:
+"engineering colleges in Tamil Nadu"
+"mba programs delhi ncr"
+"best private universities in south india"
+"top mba colleges tier 2 cities india"
+Use regionally relevant qualifiers that reflect how students, parents, or searchers evaluate educational options.
+Focus on discovery of institutions, programs, campuses, or academic services — not software tools or products.
+Avoid platform-like terms like: "tools", "portals", "software", "crm", "automation suite" unless the institution sells such platforms (e.g., EdTech companies).
 
-### 🌍 STEP 4 — REGIONAL CONTEXT VARIATION
+🏢 For Companies, Brands, or SaaS Businesses:
+Use country-level specificity only, unless the company operates hyper-locally.
+Examples:
+"best crm platforms in india"
+"affordable hr tools for us startups"
+"top logistics platforms in apac"
+If the brand has global operations, include a balanced mix of both global and regional queries.
+Avoid unnecessary city-level specificity unless the business is highly localized (e.g., "solar installation firms in jaipur").
 
-If the entity primarily operates in or originates from a specific country, region, or market (e.g., India, USA, UK, APAC, EU, Middle East, etc.),
-then 2–3 prompts per topic should **naturally integrate region-aware phrasing** like:
+❌ Reject any prompt that violates this rule.
+ ✅ Use location markers naturally and in line with how real users search for either institutions or tools.
+✅ These may include as per the location and region and country analysed for the brand/institute:
+ "india", "delhi ncr", "bengaluru", "tier 2 cities", "apac", "uae", "south india", etc.
+✅ Acceptable placements:
+As part of a modifier ("best crm for colleges in india")
+As a constraint ("crm platforms with call routing for bengaluru teams")
+As a comparison angle ("top admissions software for tier 2 colleges vs metro campuses")
 
-- "best crm for universities in India"
-- "top erp platforms for eu manufacturing"
-- "affordable marketing tools for us startups"
-- "hr software used by apac companies"
-- "education automation platforms for middle east institutions"
-- "engineering colleges india"
-- "best tier 2 mba scholarships in delhi"
+❌ Reject any prompt that does not include a regional marker if it's required.
+For local or regional brands, this is non-negotiable. Region-specificity is mandatory in 50%+ of queries per topic.
+Examples:
+"best crm for universities in India"
+"top erp platforms for India manufacturing"
+"affordable marketing tools for US startups"
+"education automation platforms for middle east institutions"
+"crm for admissions teams delhi ncr"
+"student recruitment platforms for tier 2 indian colleges"
 
-Keep it subtle and human — not forced.
-If the brand is global, include a **mix** of global and regional variants.
+Additional rules:
+Use localized terminology or compliance references where appropriate
+ (e.g., "DPDP India", "FERPA compliance", "GST billing", "SOC 2 vendors")
+If the entity is local or regional, enforce that at least half of all prompts across all topics include a clear location reference (country, state, or city).
+Do not force location names where irrelevant (e.g., SaaS brands with a global audience).
+Global entities should include a mix of international and regional contexts.
 
----
-
-### ⚙️ STEP 5 — OUTPUT FORMAT (STRICT JSON)
-
-JSON Schema (STRICT)
-
+⚙️ STEP 5 — OUTPUT FORMAT (STRICT JSON)
+Return output using this strict and clean JSON structure:
 
 {
-  "institution_name": "<CORRECTED FULL OFFICIAL NAME - NOT the user's input>",
-  "location": "<Location containing Locality/State, Country>",
-  "institution_type": "<Institution type>",
+  "company": {
+    "name": "<Actual Correct Company or Institution Name>",
+    "location": "<Headquarters Locality, Country>"
+  },
   "topics": [
     {
-      "topic": "<non-branded topic title>",
+      "topic": "<Topic Name>",
       "prompts": [
-        "<non-branded human-style search phrase 1>",
-        "<Search Phrase 2>",
-        "<Search Phrase 3>",
-        "<Search Phrase 4>",
-        "<Search Phrase 5>",
-        "<Search Phrase 6>",
-        "<Search Phrase 7>",
-        "<Search Phrase 8>",
-        "<Search Phrase 9>",
-        "<Search Phrase 10>"
+        "<non-branded Human-style search phrase 1>",
+        "<non-branded human-style search phrase 2>",
+        "<non-branded human-style search phrase 3>",
+        "...",
+        "<non-branded human-style search phrase 11>"
       ]
     },
-    {
-      "topic": "<...>",
-      "prompts": [ "<... 10 items ...>" ]
-    }
-    /* Repeat until 11 topics total */
+    ...
   ]
 }
 
-### STEP 6 — GUIDELINES FOR PROMPT QUALITY
-Ensure that:
-Prompts simulate intent-rich human search behavior — not robotic phrasing.
-Each prompt is keyword-rich, natural, and leads to platform or solution discovery (not informational articles).
-Maintain diversity: vary tone, structure, and sub-intent (comparison, affordability, region, integration, niche use cases).
-Ensure precision: all prompts should realistically surface results relevant to that topic and domain.
-Include both global and regionally contextual prompts where applicable.
+⚠️ Important Output Rules:
+No trailing commas
+No explanatory text outside the JSON
+No markdown or commentary — only valid JSON
+All queries must be enclosed in double quotes
+Arrays and nesting must be syntactically correct
 
-
-###  STEP 7 — FINAL EXECUTION
-Begin the full reasoning and generation process for the input entity by keeping in mind the following pointers:
-Think step by step:
-Understand the entity.
-Derive its ecosystem and pain points.
-Identify 11 meaningful topic areas.
-Generate realistic, diverse, discovery-oriented human queries.
-Include relevant regional context when appropriate.
-Output the structured JSON as per the format above.`;
+🧠 STEP 6 — GUIDELINES FOR PROMPT QUALITY
+Prompts must simulate intent-rich, human search behavior that results in platform, software, or institutional discovery.
+Each prompt must:
+Be keyword-rich and conversational
+Include search intent and discovery phrasing
+Lead directly to identifiable solutions (platforms, institutions, vendors)
+Include diversity:
+Comparisons
+Feature or capability mentions
+Pricing or value qualifiers
+Integration or compliance references
+Regional variations (especially if local)
+Never include prompts that yield generic advice, academic guides, or conceptual information
+Stay tightly within the domain ecosystem of the entity analyzed
+Ensure that if the entity is local or regional, 50% of the prompts reflect that country.`;
 
 // Prompt #2: Unbiased Query Analysis with Web Search (NO BRAND AWARENESS)
 const PROMPT_2_SYSTEM = `You are an intelligent answering system that generates completely unbiased, fact-based answers to user queries using web search.
@@ -567,25 +589,26 @@ async function validateBrandWithLLM(
     };
   }
 
-  const validationPrompt = `You are a precise brand matching system for educational institutions.
+  const validationPrompt = `You are a precise brand matching system.
 
-**Focus Institution:** "${focusBrand}"
+**Focus Brand/Entity:** "${focusBrand}"
 
-**List of institutions mentioned in an answer:**
+**List of brands/entities mentioned in an answer:**
 ${JSON.stringify(brandsMentioned, null, 2)}
 
-**Question:** Is the Focus Institution mentioned in this list?
+**Question:** Is the Focus Brand/Entity mentioned in this list?
 
 **Matching Rules:**
-- Match if they refer to the SAME institution
+- Match if they refer to the SAME brand/institute/entity/company
 - Include exact name matches
-- Include common abbreviations (e.g., "MIT" for "Massachusetts Institute of Technology")
+- Include common abbreviations (e.g., "MIT" for "Massachusetts Institute of Technology", "IBM" for "International Business Machines")
 - Include alternate official names (e.g., "REC" for "Regional Engineering College")
-- Include nicknames or informal names
+- Include nicknames or informal names (e.g., "Meesho" for "Meesho Supply")
 - Include minor misspellings or typos
-- DO NOT match different institutions even if names are similar
+- DO NOT match different entities even if names are similar
   - Example: "Rajalakshmi Institute of Technology" ≠ "IIT Madras" (different institutions)
   - Example: "Harvard University" ≠ "Howard University" (different institutions)
+  - Example: "Meritto" ≠ "Merit Solutions" (different companies)
 
 **Return strict JSON format:**
 {
@@ -599,7 +622,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
 **Examples:**
 - Focus: "MIT", List: ["Massachusetts Institute of Technology"] → {"found": true, "matched_name": "Massachusetts Institute of Technology", "position": 1}
 - Focus: "IIT Delhi", List: ["IIT Madras", "IIT Bombay"] → {"found": false, "matched_name": null, "position": null}
-- Focus: "Rajalakshmi Institute", List: ["Indian Institute of Technology"] → {"found": false} (different institutions)`;
+- Focus: "Meritto", List: ["Salesforce", "HubSpot", "Meritto EdTech"] → {"found": true, "matched_name": "Meritto EdTech", "position": 3}`;
 
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
@@ -615,7 +638,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
         messages: [
           {
             role: 'system',
-            content: 'You are a precise institution name matcher. Always respond in valid JSON format.'
+            content: 'You are a precise brand/entity name matcher. Always respond in valid JSON format.'
           },
           {
             role: 'user',
@@ -623,8 +646,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
           }
         ],
         temperature: 0.1, // Low temperature for consistency
-        max_tokens: 500,
-        response_format: { type: 'json_object' } // Enforce JSON response
+        max_tokens: 500
       })
     });
 
@@ -654,8 +676,8 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       };
     }
 
-    // Parse JSON response
-    const validation = JSON.parse(content);
+    // Parse JSON response using robust helper (handles markdown blocks, malformed JSON)
+    const validation = extractAndParseJSON(content, 'Prompt #3 (Brand Validation)');
 
     console.log(`  🤖 LLM Validation Result: found=${validation.found}, position=${validation.position}, confidence=${validation.confidence}`);
     if (validation.found) {
@@ -773,7 +795,18 @@ export async function generateTopicsAndQueries(
     }
 
     console.log(`✅ Successfully generated ${parsed.topics.length} topics`);
-    return parsed as TopicsAndQueriesResponse;
+
+    // Transform new nested structure to flat structure for backwards compatibility
+    // New format: {company: {name, location}, topics: [...]}
+    // Old format: {institution_name, location, institution_type, topics: [...]}
+    const transformedResponse: TopicsAndQueriesResponse = {
+      institution_name: parsed.company?.name || parsed.institution_name || 'Unknown',
+      location: parsed.company?.location || parsed.location || 'Unknown',
+      institution_type: parsed.institution_type || 'Unknown', // New prompt doesn't return this
+      topics: parsed.topics
+    };
+
+    return transformedResponse;
   } catch (error) {
     console.error('❌ Failed to generate topics:', error);
     if (error instanceof OpenRouterError) {
@@ -790,7 +823,6 @@ export async function generateTopicsAndQueries(
  */
 export async function processBatchQueries(
   focusBrand: string,
-  location: string,
   queries: Query[]
 ): Promise<BatchQueryResult[]> {
   if (!OPENROUTER_API_KEY) {
@@ -807,9 +839,7 @@ export async function processBatchQueries(
     // Process all queries in parallel
     const queryPromises = queries.map(async (queryObj, i) => {
       const queryText = queryObj.query_text;
-      // Append location to query in format: "Query Location - {location}"
-      const queryWithLocation = `${queryText} Location - ${location}`;
-      console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}... (Location: ${location})`);
+      console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
 
       try {
         const response = await fetchWithRetry(`${API_BASE_URL}/chat/completions`, {
@@ -829,11 +859,11 @@ export async function processBatchQueries(
               },
               {
                 role: 'user',
-                content: `Query: ${queryWithLocation}`
+                content: `Query: ${queryText}`
               }
             ],
             temperature: 0.3,
-            max_tokens: 40000,
+            max_tokens: 50000,
             max_completion_tokens: 20000,
             reasoning: {
               effort: 'low'

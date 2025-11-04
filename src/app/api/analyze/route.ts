@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         institution_type: topicsData.institution_type,
         topics: topicsData.topics,
         status: 'pending',
-        total_queries: topicsData.topics.length * 10,
+        total_queries: topicsData.topics.length * 11,
         progress: 0
       })
       .select()
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Created ${topicsData.topics.length} topics with ${topicsData.topics.length * 10} queries`);
+    console.log(`✅ Created ${topicsData.topics.length} topics with ${topicsData.topics.length * 11} queries`);
 
     // Update progress to 25% after topics and queries are created
     // Note: Don't set status='processing' here - processAnalysis() will do it
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     // 5. Start background processing (non-blocking)
     console.log('🚀 Step 4: Starting background processing...\n');
     // Don't await - let it run in background
-    processAnalysis(analysis.id, location).catch(error => {
+    processAnalysis(analysis.id).catch(error => {
       console.error(`❌ Background processing failed for ${analysis.id}:`, error);
     });
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       analysisId: analysis.id,
       message: 'Analysis started',
-      totalQueries: topicsData.topics.length * 10
+      totalQueries: topicsData.topics.length * 11
     });
 
   } catch (error: any) {

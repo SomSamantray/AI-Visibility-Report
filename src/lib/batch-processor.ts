@@ -57,7 +57,6 @@ function createBatches(queries: Query[], batchSize: number): QueryBatch[] {
 async function processSingleBatch(
   analysisId: string,
   focusBrand: string,
-  location: string,
   batch: QueryBatch
 ): Promise<void> {
   const { MAX_RETRIES, TIMEOUT_MS } = BATCH_CONFIG;
@@ -80,7 +79,7 @@ async function processSingleBatch(
     try {
       // Call OpenRouter - pass full query objects for real-time DB updates
       // No batch-level timeout needed since individual queries have 5-min timeouts
-      const results = await processBatchQueries(focusBrand, location, batch.queries);
+      const results = await processBatchQueries(focusBrand, batch.queries);
 
       // No need to save results - they're already saved individually in processBatchQueries()
 
@@ -125,7 +124,6 @@ async function processSingleBatch(
 async function processBatchesConcurrently(
   analysisId: string,
   focusBrand: string,
-  location: string,
   batches: QueryBatch[]
 ): Promise<void> {
   const { CONCURRENT_BATCHES } = BATCH_CONFIG;
@@ -146,7 +144,7 @@ async function processBatchesConcurrently(
 
     // Process this round's batches in parallel
     const batchPromises = roundBatches.map(batch =>
-      processSingleBatch(analysisId, focusBrand, location, batch)
+      processSingleBatch(analysisId, focusBrand, batch)
     );
 
     // Wait for all batches in this round to complete
@@ -171,7 +169,7 @@ async function processBatchesConcurrently(
  * Main function - Process entire analysis
  * This is called after analysis and queries are created in DB
  */
-export async function processAnalysis(analysisId: string, location: string): Promise<void> {
+export async function processAnalysis(analysisId: string): Promise<void> {
   console.log(`\n🎯 Starting analysis processing: ${analysisId}\n`);
 
   try {
@@ -218,7 +216,7 @@ export async function processAnalysis(analysisId: string, location: string): Pro
     console.log(`📦 Created ${batches.length} batches`);
 
     // 5. Process batches concurrently
-    await processBatchesConcurrently(analysisId, analysis.institution_name, location, batches);
+    await processBatchesConcurrently(analysisId, analysis.institution_name, batches);
 
     // 6. Calculate all metrics
     console.log(`\n🧮 Calculating metrics...`);

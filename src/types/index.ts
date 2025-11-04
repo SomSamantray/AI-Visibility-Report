@@ -90,6 +90,15 @@ export interface TopicsAndQueriesResponse {
   topics: TopicData[];
 }
 
+// New Prompt 1 Response (nested structure from LLM)
+export interface Prompt1RawResponse {
+  company: {
+    name: string;
+    location: string;
+  };
+  topics: TopicData[];
+}
+
 export interface BatchQueryResult {
   query: string;
   answer: string;
