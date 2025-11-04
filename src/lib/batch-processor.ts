@@ -7,10 +7,11 @@ import type { Query, BatchQueryResult, BATCH_CONFIG as BatchConfig } from '@/typ
 // Configuration
 const BATCH_CONFIG = {
   QUERIES_PER_BATCH: 5,
-  CONCURRENT_BATCHES: 10,
+  CONCURRENT_BATCHES: 5, // Reduced from 10 to 5 to avoid rate limiting (25 parallel requests instead of 50)
   MAX_RETRIES: 3,
   TIMEOUT_MS: 300000, // 5 minutes - increased from 60s to match individual query timeout
-  PROGRESS_UPDATE_INTERVAL: 5
+  PROGRESS_UPDATE_INTERVAL: 5,
+  BATCH_DELAY_MS: 2000 // 2 second delay between batch rounds to further reduce rate limit hits
 };
 
 interface QueryBatch {
@@ -57,6 +58,7 @@ function createBatches(queries: Query[], batchSize: number): QueryBatch[] {
 async function processSingleBatch(
   analysisId: string,
   focusBrand: string,
+  location: string,
   batch: QueryBatch
 ): Promise<void> {
   const { MAX_RETRIES, TIMEOUT_MS } = BATCH_CONFIG;
@@ -77,9 +79,9 @@ async function processSingleBatch(
   // Retry logic
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // Call OpenRouter - pass full query objects for real-time DB updates
+      // Call OpenAI API - pass full query objects for real-time DB updates with location for web search
       // No batch-level timeout needed since individual queries have 5-min timeouts
-      const results = await processBatchQueries(focusBrand, batch.queries);
+      const results = await processBatchQueries(focusBrand, location, batch.queries);
 
       // No need to save results - they're already saved individually in processBatchQueries()
 
@@ -124,6 +126,7 @@ async function processSingleBatch(
 async function processBatchesConcurrently(
   analysisId: string,
   focusBrand: string,
+  location: string,
   batches: QueryBatch[]
 ): Promise<void> {
   const { CONCURRENT_BATCHES } = BATCH_CONFIG;
@@ -132,7 +135,8 @@ async function processBatchesConcurrently(
   console.log(`\n🚀 Starting concurrent processing:`);
   console.log(`   Total batches: ${totalBatches}`);
   console.log(`   Concurrent: ${CONCURRENT_BATCHES}`);
-  console.log(`   Queries per batch: ${batches[0]?.queries.length || 5}\n`);
+  console.log(`   Queries per batch: ${batches[0]?.queries.length || 5}`);
+  console.log(`   Location: ${location}\n`);
 
   // Process in rounds
   for (let i = 0; i < totalBatches; i += CONCURRENT_BATCHES) {
@@ -144,7 +148,7 @@ async function processBatchesConcurrently(
 
     // Process this round's batches in parallel
     const batchPromises = roundBatches.map(batch =>
-      processSingleBatch(analysisId, focusBrand, batch)
+      processSingleBatch(analysisId, focusBrand, location, batch)
     );
 
     // Wait for all batches in this round to complete
@@ -160,6 +164,12 @@ async function processBatchesConcurrently(
     // Update progress after each round
     const progress = await updateAnalysisProgress(analysisId);
     console.log(`📊 Progress: ${progress}%`);
+
+    // Add delay between rounds to avoid rate limiting (except after last round)
+    if (i + CONCURRENT_BATCHES < totalBatches) {
+      console.log(`⏳ Waiting ${BATCH_CONFIG.BATCH_DELAY_MS}ms before next round...`);
+      await sleep(BATCH_CONFIG.BATCH_DELAY_MS);
+    }
   }
 
   console.log(`\n✅ All batches processed!\n`);
@@ -173,10 +183,10 @@ export async function processAnalysis(analysisId: string): Promise<void> {
   console.log(`\n🎯 Starting analysis processing: ${analysisId}\n`);
 
   try {
-    // 1. Fetch analysis to get institution name
-    const { data: analysis, error: analysisError } = await supabaseAdmin
+    // 1. Fetch analysis to get institution name and location
+    const { data: analysis, error: analysisError} = await supabaseAdmin
       .from('analyses')
-      .select('institution_name, status')
+      .select('institution_name, location, status')
       .eq('id', analysisId)
       .single();
 
@@ -187,6 +197,8 @@ export async function processAnalysis(analysisId: string): Promise<void> {
       console.log(`⚠️  Analysis ${analysisId} is already ${analysis.status}`);
       return;
     }
+
+    const location = analysis.location || 'Unknown';
 
     // 2. Mark analysis as processing
     await supabaseAdmin
@@ -215,8 +227,8 @@ export async function processAnalysis(analysisId: string): Promise<void> {
     const batches = createBatches(queries, BATCH_CONFIG.QUERIES_PER_BATCH);
     console.log(`📦 Created ${batches.length} batches`);
 
-    // 5. Process batches concurrently
-    await processBatchesConcurrently(analysisId, analysis.institution_name, batches);
+    // 5. Process batches concurrently with location
+    await processBatchesConcurrently(analysisId, analysis.institution_name, location, batches);
 
     // 6. Calculate all metrics
     console.log(`\n🧮 Calculating metrics...`);

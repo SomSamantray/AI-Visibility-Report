@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       .insert({
         institution_name: correctedInstitutionName, // Use corrected name
         institution_type: topicsData.institution_type,
+        location: location, // Save location for regional web search
         topics: topicsData.topics,
         status: 'pending',
         total_queries: topicsData.topics.length * 11,

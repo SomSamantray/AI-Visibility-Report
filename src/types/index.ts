@@ -4,6 +4,7 @@ export interface Analysis {
   id: string;
   institution_name: string;
   institution_type: string | null;
+  location?: string; // Institution location for regional web search (format: "City, State/Region, Country")
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
   research_notes?: ResearchNotes;
@@ -53,6 +54,7 @@ export interface Query {
   answer?: string;
   brands_mentioned?: string[];
   focused_brand?: string;
+  canonical_brand?: string; // Parent/main brand for campus variants consolidation
   focused_brand_rank?: number;
   visibility?: number;
   websites_cited?: string[];

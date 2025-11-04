@@ -179,6 +179,7 @@ export async function calculateAllMetrics(analysisId: string): Promise<void> {
         average_rank: averageRank,
         total_queries: queries.length,
         queries_mentioned: queriesWithMention,
+        progress: 100, // Set to 100% when metrics calculation completes
         status: 'completed',
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

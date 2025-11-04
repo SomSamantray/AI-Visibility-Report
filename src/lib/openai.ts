@@ -20,6 +20,32 @@ export class OpenAIError extends Error {
 }
 
 /**
+ * Sanitize JSON string by fixing common LLM output issues
+ * Handles unescaped control characters and malformed strings
+ */
+function sanitizeJSONString(jsonString: string): string {
+  // Fix unescaped control characters inside string values
+  // This regex finds strings and escapes control characters within them
+  return jsonString.replace(
+    /"([^"\\]*(\\.[^"\\]*)*)"/g,
+    (match, content) => {
+      // Don't process if already properly escaped
+      if (!content || typeof content !== 'string') return match;
+
+      // Escape control characters
+      const fixed = content
+        .replace(/\n/g, '\\n')     // Newlines
+        .replace(/\r/g, '\\r')     // Carriage returns
+        .replace(/\t/g, '\\t')     // Tabs
+        .replace(/\f/g, '\\f')     // Form feeds
+        .replace(/\b/g, '\\b');    // Backspaces
+
+      return `"${fixed}"`;
+    }
+  );
+}
+
+/**
  * Extract and parse JSON from API response
  * Handles markdown code blocks and malformed responses
  */
@@ -53,15 +79,25 @@ function extractAndParseJSON(content: string, context: string): any {
     throw new Error(`${context}: No valid JSON found in response`);
   }
 
-  // Step 4: Attempt to parse
+  // Step 4: Attempt to parse with sanitization
   try {
     const parsed = JSON.parse(jsonString);
     console.log(`✅ ${context} - Successfully parsed JSON`);
     return parsed;
-  } catch (error) {
-    console.error(`❌ ${context} - JSON parse failed`);
-    console.error(`Attempted to parse: ${jsonString.substring(0, 500)}...`);
-    throw new Error(`${context}: Failed to parse JSON - ${error}`);
+  } catch (firstError) {
+    // First parse failed - try with sanitization
+    console.log(`⚠️  ${context} - Initial parse failed, attempting sanitization...`);
+
+    try {
+      const sanitized = sanitizeJSONString(jsonString);
+      const parsed = JSON.parse(sanitized);
+      console.log(`✅ ${context} - Successfully parsed after sanitization`);
+      return parsed;
+    } catch (secondError) {
+      console.error(`❌ ${context} - JSON parse failed even after sanitization`);
+      console.error(`Attempted to parse: ${jsonString.substring(0, 500)}...`);
+      throw new Error(`${context}: Failed to parse JSON - ${secondError}`);
+    }
   }
 }
 
@@ -72,7 +108,7 @@ async function fetchWithRetry(
   maxRetries = 3,
   timeoutMs = 300000 // 5 minutes default timeout
 ): Promise<Response> {
-  for (let i = 0; i < maxRetries; i++) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -85,20 +121,42 @@ async function fetchWithRetry(
 
       clearTimeout(timeoutId);
 
+      // Handle rate limiting (429) with exponential backoff
       if (response.status === 429) {
-        // Rate limited - wait and retry
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '5');
-        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '10');
+        const waitTime = Math.max(retryAfter * 1000, 5000 * Math.pow(2, attempt)); // At least 5s exponential backoff
+        console.log(`⚠️  Rate limited (429) - waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
 
+      // Handle server errors (500, 502, 503, 504) with retry
+      if (response.status >= 500 && response.status < 600) {
+        if (attempt < maxRetries - 1) {
+          const waitTime = 3000 * Math.pow(2, attempt); // Exponential backoff starting at 3s
+          console.log(`⚠️  Server error (${response.status}) - waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+
+      // Return response for all other status codes (including 4xx errors)
       return response;
     } catch (error: any) {
+      const isLastAttempt = attempt === maxRetries - 1;
+
       if (error.name === 'AbortError') {
-        console.error(`⏱️  Request timeout after ${timeoutMs}ms`);
+        console.error(`⏱️  Request timeout after ${timeoutMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+      } else {
+        console.error(`❌ Fetch error (attempt ${attempt + 1}/${maxRetries}):`, error.message);
       }
-      if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+
+      if (isLastAttempt) throw error;
+
+      // Exponential backoff for network errors
+      const waitTime = 2000 * Math.pow(2, attempt); // 2s, 4s, 8s...
+      console.log(`⏳ Retrying after ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
 
@@ -591,7 +649,18 @@ function detectBrandInAnswer(
   }
 
   const rank = foundIndex + 1; // Convert to 1-based index
-  const visibility = rank === 1 ? '100%' : '50%';
+
+  // Weighted ranking system: Rank 1=100%, 2-3=50%, 4-5=25%, 6+=10%
+  let visibility: string;
+  if (rank === 1) {
+    visibility = '100%';
+  } else if (rank <= 3) {
+    visibility = '50%';
+  } else if (rank <= 5) {
+    visibility = '25%';
+  } else {
+    visibility = '10%';
+  }
 
   return { rank, visibility };
 }
@@ -629,19 +698,20 @@ function getAcronym(name: string): string {
 async function validateBrandWithLLM(
   brandsMentioned: string[],
   focusBrand: string
-): Promise<{ found: boolean; matched_name: string | null; position: number | null; confidence: string; reasoning: string }> {
+): Promise<{ found: boolean; matched_name: string | null; canonical_brand: string | null; position: number | null; confidence: string; reasoning: string }> {
   // Early exit if no brands mentioned
   if (!brandsMentioned || brandsMentioned.length === 0) {
     return {
       found: false,
       matched_name: null,
+      canonical_brand: null,
       position: null,
       confidence: 'high',
       reasoning: 'No brands mentioned in the answer'
     };
   }
 
-  const validationPrompt = `You are a precise brand matching system.
+  const validationPrompt = `You are a precise brand matching system with brand family recognition.
 
 **Focus Brand/Entity:** "${focusBrand}"
 
@@ -653,28 +723,43 @@ ${JSON.stringify(brandsMentioned, null, 2)}
 **Matching Rules:**
 - Match if they refer to the SAME brand/institute/entity/company
 - Include exact name matches
-- Include common abbreviations (e.g., "MIT" for "Massachusetts Institute of Technology", "IBM" for "International Business Machines")
-- Include alternate official names (e.g., "REC" for "Regional Engineering College")
-- Include nicknames or informal names (e.g., "Meesho" for "Meesho Supply")
+- Include common abbreviations (e.g., "MIT" for "Massachusetts Institute of Technology")
+- Include alternate official names
+- Include nicknames or informal names
 - Include minor misspellings or typos
-- DO NOT match different entities even if names are similar
-  - Example: "Rajalakshmi Institute of Technology" ≠ "IIT Madras" (different institutions)
-  - Example: "Harvard University" ≠ "Howard University" (different institutions)
-  - Example: "Meritto" ≠ "Merit Solutions" (different companies)
+
+**Brand Family Matching (NEW):**
+- Recognize campus/branch variations as the same parent brand
+  - "Sage University Indore" + "Sage University Bhopal" → Both are "Sage University"
+  - "Harvard Business School" + "Harvard Medical School" → Both are "Harvard University"
+  - "IIT Delhi" + "IIT Bombay" → Keep separate (these are distinct institutions despite shared brand)
+- When matched, return the CANONICAL parent brand name
+- Only merge if they are clearly branches/campuses of the same institution
+
+**DO NOT match different entities:**
+- "Rajalakshmi Institute of Technology" ≠ "IIT Madras"
+- "Harvard University" ≠ "Howard University"
+- "Meritto" ≠ "Merit Solutions"
 
 **Return strict JSON format:**
 {
   "found": true or false,
-  "matched_name": "exact name from list as it appears" or null,
+  "matched_name": "exact name from list as it appears",
+  "canonical_brand": "parent/main brand name if campus variant, else same as matched_name",
   "position": 1-based position in list (1, 2, 3...) or null,
   "confidence": "high" or "medium" or "low",
   "reasoning": "brief explanation of why match/no match"
 }
 
 **Examples:**
-- Focus: "MIT", List: ["Massachusetts Institute of Technology"] → {"found": true, "matched_name": "Massachusetts Institute of Technology", "position": 1}
-- Focus: "IIT Delhi", List: ["IIT Madras", "IIT Bombay"] → {"found": false, "matched_name": null, "position": null}
-- Focus: "Meritto", List: ["Salesforce", "HubSpot", "Meritto EdTech"] → {"found": true, "matched_name": "Meritto EdTech", "position": 3}`;
+- Focus: "MIT", List: ["Massachusetts Institute of Technology"]
+  → {"found": true, "matched_name": "Massachusetts Institute of Technology", "canonical_brand": "MIT", "position": 1}
+
+- Focus: "Sage University", List: ["Sage University Indore", "VIT", "IIT Delhi"]
+  → {"found": true, "matched_name": "Sage University Indore", "canonical_brand": "Sage University", "position": 1}
+
+- Focus: "IIT Delhi", List: ["IIT Madras", "IIT Bombay"]
+  → {"found": false, "matched_name": null, "canonical_brand": null, "position": null}`;
 
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/responses`, {
@@ -699,6 +784,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       return {
         found: false,
         matched_name: null,
+        canonical_brand: null,
         position: null,
         confidence: 'low',
         reasoning: 'Validation API call failed'
@@ -714,6 +800,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       return {
         found: false,
         matched_name: null,
+        canonical_brand: null,
         position: null,
         confidence: 'low',
         reasoning: 'Invalid validation response structure'
@@ -727,6 +814,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       return {
         found: false,
         matched_name: null,
+        canonical_brand: null,
         position: null,
         confidence: 'low',
         reasoning: 'No message in validation response'
@@ -740,6 +828,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       return {
         found: false,
         matched_name: null,
+        canonical_brand: null,
         position: null,
         confidence: 'low',
         reasoning: 'No text in validation response'
@@ -753,6 +842,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
       return {
         found: false,
         matched_name: null,
+        canonical_brand: null,
         position: null,
         confidence: 'low',
         reasoning: 'Empty validation response'
@@ -762,14 +852,15 @@ ${JSON.stringify(brandsMentioned, null, 2)}
     // Parse JSON response using robust helper (handles markdown blocks, malformed JSON)
     const validation = extractAndParseJSON(content, 'Prompt #3 (Brand Validation)');
 
-    console.log(`  🤖 LLM Validation Result: found=${validation.found}, position=${validation.position}, confidence=${validation.confidence}`);
+    console.log(`  🤖 LLM Validation Result: found=${validation.found}, canonical_brand=${validation.canonical_brand}, position=${validation.position}, confidence=${validation.confidence}`);
     if (validation.found) {
-      console.log(`  ✓ LLM matched "${focusBrand}" with "${validation.matched_name}" at position ${validation.position}`);
+      console.log(`  ✓ LLM matched "${focusBrand}" with "${validation.matched_name}" (canonical: "${validation.canonical_brand}") at position ${validation.position}`);
     }
 
     return {
       found: validation.found || false,
       matched_name: validation.matched_name || null,
+      canonical_brand: validation.canonical_brand || validation.matched_name || null,
       position: validation.position || null,
       confidence: validation.confidence || 'medium',
       reasoning: validation.reasoning || 'No reasoning provided'
@@ -781,6 +872,7 @@ ${JSON.stringify(brandsMentioned, null, 2)}
     return {
       found: false,
       matched_name: null,
+      canonical_brand: null,
       position: null,
       confidence: 'low',
       reasoning: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -900,12 +992,39 @@ export async function generateTopicsAndQueries(
 }
 
 /**
+ * Parse location string into web search user_location format
+ * Input examples: "Indore, Madhya Pradesh, India" or "London, England, UK" or "India"
+ * Output: { type: 'approximate', city?: string, region?: string, country?: string }
+ */
+function parseLocationForWebSearch(location: string): {
+  type: 'approximate';
+  region?: string;
+} {
+  // Per user requirement: Do not send country. Only send region with complete location string.
+  // No parsing needed - pass complete location string directly in region field
+
+  if (!location || location.trim() === '' || location === 'Unknown') {
+    console.log('⚠️  No valid location provided, skipping web search location parameter');
+    return { type: 'approximate' }; // No location specified
+  }
+
+  console.log(`🌍 Using location for web search: "${location}" → region: ${location}`);
+
+  // Use complete location string in region field only
+  return {
+    type: 'approximate',
+    region: location  // e.g., "Vellore, Tamil Nadu, India"
+  };
+}
+
+/**
  * Process a batch of queries (Prompt #2 - processes 5 queries at once)
  * Now accepts full Query objects and saves to DB immediately when each completes
  * Uses gpt-5-nano with web search for processing
  */
 export async function processBatchQueries(
   focusBrand: string,
+  location: string,
   queries: Query[]
 ): Promise<BatchQueryResult[]> {
   if (!OPENAI_API_KEY) {
@@ -919,18 +1038,21 @@ export async function processBatchQueries(
   try {
     console.log(`🔍 Processing batch of ${queries.length} queries IN PARALLEL for: ${focusBrand}`);
 
+    // Parse location for web search
+    const userLocation = parseLocationForWebSearch(location);
+
     // Process all queries in parallel
     const queryPromises = queries.map(async (queryObj, i) => {
       const queryText = queryObj.query_text;
       const includeInstitutionMention = queryObj.include_institution_mention || false;
 
-      // Construct user prompt - add institution mention instruction if flagged
+      // Construct user prompt - FIXED: Changed from forced inclusion to context hint
       const userPrompt = includeInstitutionMention
-        ? `Query: ${queryText}\n\nYou must mandatorily and positively include 1 bullet point about ${focusBrand} in-the-middle of this query's answer.`
+        ? `Query: ${queryText}\n\nContext: If "${focusBrand}" is genuinely and actually relevant to this query based on your research, consider including a bullet point of this institute name in your answer where appropriate. Do not force include the brand/institute name in the answer if it is not relevant to the query.`
         : `Query: ${queryText}`;
 
       if (includeInstitutionMention) {
-        console.log(`  ℹ️  Query ${i + 1}/${queries.length} (with institution mention): ${queryText.substring(0, 50)}...`);
+        console.log(`  ℹ️  Query ${i + 1}/${queries.length} (with context hint): ${queryText.substring(0, 50)}...`);
       } else {
         console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
       }
@@ -951,7 +1073,8 @@ export async function processBatchQueries(
             },
             tools: [
               {
-                type: 'web_search'
+                type: 'web_search',
+                user_location: userLocation // NEW: Pass parsed location for regional web search
               }
             ],
             tool_choice: 'auto'
@@ -959,10 +1082,14 @@ export async function processBatchQueries(
         });
 
         if (!response.ok) {
-          console.error(`  ❌ Query ${i + 1} failed`);
+          // Log detailed error information
+          const errorBody = await response.text();
+          console.error(`  ❌ Query ${i + 1} failed - HTTP ${response.status} ${response.statusText}`);
+          console.error(`  📄 Error response: ${errorBody.substring(0, 500)}`);
+
           const errorResult = createErrorResult(queryText, focusBrand);
 
-          // Save error result to DB immediately
+          // Save error result to DB immediately with detailed error message
           await supabaseAdmin
             .from('queries')
             .update({
@@ -973,6 +1100,7 @@ export async function processBatchQueries(
               visibility: parseInt(errorResult.visibility) || 0,
               websites_cited: errorResult.websites_cited,
               status: 'failed',
+              error_message: `HTTP ${response.status}: ${errorBody.substring(0, 500)}`,
               processed_at: new Date().toISOString()
             })
             .eq('id', queryObj.id);
@@ -1072,9 +1200,17 @@ export async function processBatchQueries(
 
         if (validation.found && validation.position) {
           rank = validation.position;
-          // Rank 1 = 100%, Rank 2+ = 50%, Not found = 0%
-          visibility = rank === 1 ? '100%' : '50%';
-          console.log(`  ✅ Brand found at rank ${rank} with ${validation.confidence} confidence`);
+          // Weighted ranking system: Rank 1=100%, 2-3=50%, 4-5=25%, 6+=10%
+          if (rank === 1) {
+            visibility = '100%';
+          } else if (rank <= 3) {
+            visibility = '50%';
+          } else if (rank <= 5) {
+            visibility = '25%';
+          } else {
+            visibility = '10%';
+          }
+          console.log(`  ✅ Brand found at rank ${rank} with visibility ${visibility} (${validation.confidence} confidence)`);
         } else {
           console.log(`  ℹ️  Brand not found (${validation.reasoning})`);
         }
@@ -1084,7 +1220,7 @@ export async function processBatchQueries(
           query: queryText,
           answer: parsed.Answer || parsed.answer || '',
           brands_mentioned: parsed.brands_mentioned || [],
-          focused_brand: focusBrand, // Always use the actual focus brand
+          focused_brand: validation.canonical_brand || focusBrand, // Use canonical brand if available (e.g., "Sage University" instead of "Sage University Indore")
           focused_brand_rank: rank, // LLM-validated rank (95-99% accurate)
           visibility: visibility, // Calculated from LLM validation
           websites_cited: parsed.websites_cited || []
@@ -1100,6 +1236,7 @@ export async function processBatchQueries(
             focused_brand_rank: result.focused_brand_rank,
             visibility: parseInt(result.visibility) || 0,
             websites_cited: result.websites_cited,
+            canonical_brand: validation.canonical_brand, // NEW: Store canonical brand for consolidation
             status: 'completed',
             processed_at: new Date().toISOString()
           })

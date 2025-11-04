@@ -69,12 +69,20 @@ export default function LandingPage() {
           setCurrentStep(4);
         }
 
-        if (data.isComplete) {
+        // Only redirect when both status is 'completed' AND progress is 100%
+        if (data.isComplete && data.progress === 100) {
           clearInterval(interval);
           setCurrentStep(4);
           setTimeout(() => {
             router.push(`/report/${id}`);
           }, 1500);
+        }
+
+        // Handle edge case: completed without reaching 100%
+        if (data.isComplete && data.progress < 100) {
+          clearInterval(interval);
+          setError(`Analysis completed but only ${data.progress}% of queries succeeded. Please try again.`);
+          setIsProcessing(false);
         }
 
         if (data.isFailed) {
