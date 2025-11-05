@@ -228,8 +228,9 @@ For each topic, generate **11 human-style, non-branded queries** that reflect ho
 
 ### 🧱 Each prompt should combine:
 
-- **Intent keyword:** best, top, leading, affordable, compare, alternatives to, software for, platforms for, etc.
-- **Pain point or feature:** fees, placement, course flexibility, scholarships, etc.
+- Do not start with the same phrases or keywords always for every prompt/query. Be unique and create variety in query formation which help user to *discover, compare, or shortlist** educational institutions, platforms, services, or solutions related to that entity's educational ecosystem and domain.
+- **Intent keyword:** best, top, leading, colleges, affordable, compare, alternatives to, software for, platforms for, etc.
+- **Pain point or feature:** fees, placement, course flexibility, scholarships, admissions, etc.
 - **Discovery or comparison or shortlisting to elicit decision making focus:** always points to institutions, solutions, or educational services.
 
 ---
@@ -316,7 +317,7 @@ Return ONLY this JSON structure (no additional text, no markdown, no conversatio
 
 
 {
-  "Answer": "Complete unbiased answer in bullet points",
+  "Answer": "Complete answer in STRICT BULLET POINTS",
   "brands_mentioned": [
     "First Brand Name (as it appears in answer)",
     "Second Brand Name (as it appears in answer)",

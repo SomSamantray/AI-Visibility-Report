@@ -35,6 +35,19 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedQueries, setExpandedQueries] = useState<Set<string>>(new Set());
 
+  // Convert answer text to bullet points
+  const convertToBulletPoints = (text: string): string[] => {
+    if (!text) return [];
+
+    // Split by periods, exclamation marks, or question marks followed by space
+    const sentences = text
+      .split(/[.!?]+\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    return sentences;
+  };
+
   const toggleTopic = (topicId: string) => {
     const newExpanded = new Set(expandedTopics);
     if (newExpanded.has(topicId)) {
@@ -129,10 +142,6 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
               ? (rankedQueries.reduce((sum, q) => sum + (q.focused_brand_rank || 0), 0) / rankedQueries.length).toFixed(1)
               : '-';
 
-            // Calculate total citations for this topic
-            const totalCitations = topic.queries.reduce((sum, q) =>
-              sum + (q.websites_cited?.length || 0), 0
-            );
 
             const isExpanded = expandedTopics.has(topic.id);
 
@@ -169,10 +178,6 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                       <div className="text-xs text-gray-500 uppercase mb-1">Avg Rank</div>
                       <div className="text-lg font-bold text-gray-900">{avgRank}</div>
                     </div>
-                    <div className="text-center min-w-[80px]">
-                      <div className="text-xs text-gray-500 uppercase mb-1">Citations</div>
-                      <div className="text-lg font-bold text-gray-900">{totalCitations}</div>
-                    </div>
                   </div>
                 </button>
 
@@ -189,17 +194,25 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                             <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Query
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-40">
-                              Rank
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
+                              Visibility
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
-                              Brands
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
+                              Relevancy
+                            </th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider w-20">
+                              Rank
                             </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {topic.queries.map((query, index) => {
                             const isQueryExpanded = expandedQueries.has(query.id);
+
+                            // Calculate query-level metrics
+                            const queryVisibility = query.visibility || 0;
+                            const queryRelevancy = queryVisibility; // Same as visibility
+                            const queryRank = query.focused_brand_rank || 0;
 
                             return (
                               <React.Fragment key={query.id}>
@@ -220,12 +233,31 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                   <td className="px-6 py-4">
                                     <p className="text-sm text-gray-900 font-medium">{query.query_text}</p>
                                   </td>
-                                  <td className="px-6 py-4">
-                                    {getVisibilityBadge(query)}
+                                  <td className="px-4 py-4 text-center">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+                                      queryVisibility === 100 ? 'bg-green-100 text-green-700' :
+                                      queryVisibility === 50 ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {queryVisibility}%
+                                    </span>
                                   </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-sm text-gray-600">
-                                      {query.brands_mentioned?.length || 0} brands
+                                  <td className="px-4 py-4 text-center">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+                                      queryRelevancy === 100 ? 'bg-green-100 text-green-700' :
+                                      queryRelevancy === 50 ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {queryRelevancy}%
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 text-center">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+                                      queryRank === 1 ? 'bg-green-100 text-green-700' :
+                                      queryRank > 1 ? 'bg-blue-100 text-blue-700' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {queryRank > 0 ? `#${queryRank}` : '-'}
                                     </span>
                                   </td>
                                 </tr>
@@ -233,7 +265,7 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                 {/* Expanded Query Answer Section */}
                                 {isQueryExpanded && (
                                   <tr>
-                                    <td colSpan={4} className="bg-gray-50">
+                                    <td colSpan={5} className="bg-gray-50">
                                       <div className="px-8 py-6 space-y-6">
                                         {/* Brands Mentioned Section - TOP */}
                                         <div>
@@ -272,33 +304,20 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                           </div>
                                         </div>
 
-                                        {/* AI Response Section - MIDDLE */}
+                                        {/* AI Response Section - MIDDLE (Forced Bullet Points) */}
                                         <div>
                                           <h4 className="font-semibold text-sm text-gray-600 uppercase tracking-wide mb-3">
                                             AI Response
                                           </h4>
                                           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
                                             {query.answer ? (
-                                              <div className="prose prose-sm max-w-none text-gray-800">
-                                                <ReactMarkdown
-                                                  remarkPlugins={[remarkGfm]}
-                                                  components={{
-                                                    p: ({ children }) => <p className="mb-4 leading-relaxed last:mb-0">{children}</p>,
-                                                    strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
-                                                    em: ({ children }) => <em className="italic text-gray-700">{children}</em>,
-                                                    ul: ({ children }) => <ul className="list-disc list-inside space-y-2 mb-4">{children}</ul>,
-                                                    ol: ({ children }) => <ol className="list-decimal list-inside space-y-2 mb-4">{children}</ol>,
-                                                    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                                                    h1: ({ children }) => <h1 className="text-xl font-bold text-gray-900 mb-3 mt-4">{children}</h1>,
-                                                    h2: ({ children }) => <h2 className="text-lg font-bold text-gray-900 mb-2 mt-3">{children}</h2>,
-                                                    h3: ({ children }) => <h3 className="text-base font-semibold text-gray-900 mb-2 mt-3">{children}</h3>,
-                                                    code: ({ children }) => <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800">{children}</code>,
-                                                    blockquote: ({ children }) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-700 my-4">{children}</blockquote>,
-                                                  }}
-                                                >
-                                                  {query.answer}
-                                                </ReactMarkdown>
-                                              </div>
+                                              <ul className="list-disc list-inside space-y-2 text-gray-800">
+                                                {convertToBulletPoints(query.answer).map((sentence, idx) => (
+                                                  <li key={idx} className="leading-relaxed">
+                                                    {sentence}
+                                                  </li>
+                                                ))}
+                                              </ul>
                                             ) : (
                                               <p className="text-gray-500 italic">No response available</p>
                                             )}

@@ -2,21 +2,14 @@
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users } from 'lucide-react';
+import { Users, Trophy, TrendingUp, Award } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
+  PieChart,
+  Pie,
+  Cell,
   ResponsiveContainer,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar
+  Legend,
+  Tooltip
 } from 'recharts';
 
 interface Competitor {
@@ -35,83 +28,133 @@ export default function CompetitorsTab({ competitors, institutionName }: Competi
   const topCompetitors = competitors.slice(0, 10);
   const totalMentions = competitors.reduce((sum, c) => sum + (c.mention_count || 0), 0);
 
-  // Chart data for mentions
-  const mentionsChartData = topCompetitors.map(comp => {
-    const name = comp.brand_name || 'Unknown';
-    return {
-      name: name.length > 25 ? name.substring(0, 25) + '...' : name,
-      fullName: name,
-      mentions: comp.mention_count || 0
-    };
-  });
+  // Prepare data for pie chart - top 5 + others
+  const top5 = competitors.slice(0, 5);
+  const othersCount = competitors.slice(5).reduce((sum, c) => sum + (c.mention_count || 0), 0);
 
-  // Radar chart data comparing top 5
-  const radarData = topCompetitors.slice(0, 5).map(comp => {
-    const name = comp.brand_name || 'Unknown';
-    return {
-      competitor: name.length > 20 ? name.substring(0, 20) + '...' : name,
-      mentions: comp.mention_count || 0,
-      avgRank: comp.avg_rank ? (5 - comp.avg_rank) : 0 // Inverted for better visualization
-    };
-  });
+  const pieChartData = [
+    ...top5.map(comp => ({
+      name: comp.brand_name || 'Unknown',
+      value: comp.mention_count || 0,
+      fullName: comp.brand_name || 'Unknown'
+    })),
+    ...(othersCount > 0 ? [{ name: 'Others', value: othersCount, fullName: 'Other Competitors' }] : [])
+  ];
+
+  // Blue color palette
+  const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#e0e7ff'];
 
   return (
     <div className="space-y-8">
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Mentions Bar Chart */}
+        {/* Leaderboard Card - Top 10 */}
         <Card className="p-8 bg-white border-gray-200 shadow-sm">
-          <h3 className="text-xl font-bold mb-6 text-gray-900">
-            Top Competitor by Mentions
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart
-              data={mentionsChartData}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" tick={{ fill: '#6b7280' }} />
-              <YAxis
-                dataKey="name"
-                type="category"
-                width={90}
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-              />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
+              <Trophy className="w-5 h-5 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">
+              Top 10 Leaderboard
+            </h3>
+          </div>
+
+          <div className="space-y-2">
+            {topCompetitors.map((competitor, index) => {
+              const isFocusBrand = competitor.brand_name?.toLowerCase() === institutionName.toLowerCase();
+              const percentage = ((competitor.mention_count / totalMentions) * 100).toFixed(1);
+              const rank = index + 1;
+
+              return (
+                <div
+                  key={competitor.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
+                    isFocusBrand
+                      ? 'bg-blue-50 border-2 border-blue-200'
+                      : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {/* Rank Badge */}
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
+                    rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' :
+                    rank === 2 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white' :
+                    rank === 3 ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white' :
+                    isFocusBrand ? 'bg-blue-500 text-white' :
+                    'bg-white border-2 border-gray-300 text-gray-700'
+                  }`}>
+                    {rank <= 3 ? <Award className="w-5 h-5" /> : `#${rank}`}
+                  </div>
+
+                  {/* Institution Name */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-semibold truncate ${isFocusBrand ? 'text-blue-900' : 'text-gray-900'}`}>
+                      {competitor.brand_name || 'Unknown'}
+                    </div>
+                    <div className={`text-xs ${isFocusBrand ? 'text-blue-600' : 'text-gray-500'}`}>
+                      {competitor.mention_count || 0} mentions
+                    </div>
+                  </div>
+
+                  {/* Percentage Badge */}
+                  <div className={`flex-shrink-0 px-3 py-1 rounded-full text-sm font-bold ${
+                    isFocusBrand ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {percentage}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Pie Chart - Market Share */}
+        <Card className="p-8 bg-white border-gray-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">
+              Market Share Distribution
+            </h3>
+          </div>
+
+          <ResponsiveContainer width="100%" height={350}>
+            <PieChart>
+              <Pie
+                data={pieChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                outerRadius={120}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {pieChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
               <Tooltip
-                contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#111827' }}
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  color: '#111827'
+                }}
+                formatter={(value: number) => [`${value} mentions`, 'Count']}
                 labelFormatter={(value, payload) => {
                   const item = payload[0]?.payload;
                   return item?.fullName || value;
                 }}
               />
-              <Bar dataKey="mentions" fill="#8b5cf6" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        {/* Average Rank Comparison */}
-        <Card className="p-8 bg-white border-gray-200 shadow-sm">
-          <h3 className="text-xl font-bold mb-6 text-gray-900">
-            Top 5 Competitors Rank Performance
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="#e5e7eb" />
-              <PolarAngleAxis dataKey="competitor" tick={{ fill: '#6b7280', fontSize: 11 }} />
-              <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#6b7280' }} />
-              <Radar
-                name="Mention Count"
-                dataKey="mentions"
-                stroke="#8b5cf6"
-                fill="#8b5cf6"
-                fillOpacity={0.6}
+              <Legend
+                wrapperStyle={{ color: '#6b7280' }}
+                formatter={(value, entry: any) => {
+                  const name = entry.payload.fullName || value;
+                  return name.length > 30 ? name.substring(0, 30) + '...' : name;
+                }}
               />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#111827' }}
-              />
-              <Legend wrapperStyle={{ color: '#6b7280' }} />
-            </RadarChart>
+            </PieChart>
           </ResponsiveContainer>
         </Card>
       </div>
