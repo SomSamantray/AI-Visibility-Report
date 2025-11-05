@@ -105,8 +105,8 @@ export default function LandingPage() {
       </div>
 
       {/* Header */}
-      <header className="relative z-10 border-b border-white/5 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-5 flex items-center justify-between max-w-6xl">
+      <header className="relative z-10 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-5 flex items-center justify-between max-w-7xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
               <Sparkles className="w-6 h-6 text-white" />
@@ -118,14 +118,14 @@ export default function LandingPage() {
               <p className="text-xs text-slate-400">by Meritto AI Labs</p>
             </div>
           </div>
-          <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-            <span className="text-xs font-medium text-blue-300">Powered by Mio</span>
+          <div className="px-4 py-2 rounded-lg bg-white/5 border border-white/10">
+            <span className="text-sm font-medium text-gray-300">Powered by Mio</span>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative z-10 container mx-auto px-6 pt-32 pb-24 max-w-5xl">
+      <section className="relative z-10 container mx-auto px-6 pt-24 pb-16 max-w-5xl">
         <div className="text-center mb-16">
           <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
             <span className="bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent">
@@ -137,7 +137,7 @@ export default function LandingPage() {
             </span>
           </h1>
 
-          <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto leading-relaxed">
             See how your institution appears in AI-powered searches and understand your competitive position
           </p>
 
@@ -156,7 +156,7 @@ export default function LandingPage() {
               <Button
                 type="submit"
                 size="lg"
-                className="h-14 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all"
+                className="h-14 px-8 bg-white hover:bg-gray-100 text-slate-900 font-semibold rounded-xl shadow-lg transition-all"
                 disabled={isLoading || isProcessing || !institutionName.trim()}
               >
                 {isLoading ? (
@@ -183,7 +183,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="relative z-10 container mx-auto px-6 py-24 max-w-6xl">
+      <section className="relative z-10 container mx-auto px-6 py-20 max-w-6xl">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             How It Works
@@ -245,7 +245,7 @@ export default function LandingPage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="relative z-10 container mx-auto px-6 py-24 max-w-6xl">
+      <section className="relative z-10 container mx-auto px-6 py-20 max-w-6xl">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Why AI Visibility Matters
@@ -317,6 +317,66 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-white/5 bg-black/20 backdrop-blur-sm mt-20">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">AI Visibility Genie</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-500">A product of Meritto AI Labs</p>
+            </div>
+
+            {/* Platform */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Platform</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Product Analytics</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Feature Experimentation</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">AI Agents</a></li>
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Resource Library</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Blog</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Product Updates</a></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <ul className="space-y-2">
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">About Us</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Careers</a></li>
+                <li><a href="#" className="text-slate-400 text-sm hover:text-white transition-colors">Contact Us</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-slate-500 text-xs">
+              © 2025 Meritto AI Labs. All rights reserved.
+            </p>
+            <div className="flex items-center gap-6">
+              <a href="#" className="text-slate-400 text-xs hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" className="text-slate-400 text-xs hover:text-white transition-colors">Privacy Policy</a>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Progress Modal - Simple & Opaque */}
       <Dialog open={isProcessing} onOpenChange={() => {}}>
@@ -453,35 +513,6 @@ export default function LandingPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 bg-black/20 backdrop-blur-sm mt-32">
-        <div className="container mx-auto px-6 py-12 max-w-6xl">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-semibold">AI Visibility Genie</p>
-                <p className="text-xs text-slate-400">A product of Meritto AI Labs</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-                <span className="text-xs font-medium text-blue-300">Powered by Mio</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-white/5 text-center">
-            <p className="text-slate-500 text-xs">
-              © 2025 Meritto AI Labs. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

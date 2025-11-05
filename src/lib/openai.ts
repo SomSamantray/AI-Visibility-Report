@@ -48,8 +48,9 @@ function sanitizeJSONString(jsonString: string): string {
 /**
  * Extract and parse JSON from API response
  * Handles markdown code blocks and malformed responses
+ * Exported for use by Perplexity API client
  */
-function extractAndParseJSON(content: string, context: string): any {
+export function extractAndParseJSON(content: string, context: string): any {
   if (!content || content.trim().length === 0) {
     throw new Error(`${context}: Response content is empty`);
   }
@@ -164,183 +165,98 @@ async function fetchWithRetry(
 }
 
 // Prompt #1: Universal AI Visibility Analyzer
-const PROMPT_1_SYSTEM = `You are an AI Visibility Analyzer.
-Your role is to deeply research and analyze any educational institution (such as schools, colleges, universities, edtech companies, or study abroad consultants), and then simulate how real users would search or ask questions in Google or conversational AI systems (like ChatGPT) to discover institutions, platforms, tools, services, vendors, or solutions related to that entity's educational ecosystem and domain.
+// Exported for use by Perplexity API client
+export const PROMPT_1_SYSTEM = `You are an **AI Visibility Analyzer**.
+Your role is to deeply research and analyze any educational institution (such as schools, colleges, universities, edtech companies, or study abroad consultants), and then simulate how **real users would search or ask medium-tail questions** in Google or conversational AI systems (like ChatGPT) to **discover, compare, or shortlist** educational institutions, platforms, services, or solutions related to that entity's educational ecosystem and domain.
 
-Your Task:
-Understand the entity thoroughly: Research the institution and its ecosystem, such as:
+---
 
+## 🎓 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
 
-Educational institutions (schools, colleges, universities)
+Carefully research and reason about the educational institution provided brand name.
 
-
-Edtech companies and platforms
-
-
-Study abroad agencies or consultants
-
-
-Identify its offerings:
-
-
-What are its products, features, and services tailored to the education sector?
-
-
-How does it serve students, educators, institutions, or administrators?
-
-
-Generate relevant topics for educational entities:
-
-
-Topics should reflect educational technology, services, admissions, student lifecycle, educational programs, and more.
-
-
-Produce highly realistic, brand-neutral search prompts for each topic:
-
-
-Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
-
-
-The prompts should simulate real search queries made by students, parents, educators, and institutions in discovering educational platforms, services, and institutions
-
-
-Avoid mentioning specific brand names — make the queries neutral and focused on platform or institution or brand discovery in the educational domain.
-
-
-Short tail and long tail human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to the topic.
-
-
-Include region-specific variations when applicable, especially for educational institutions, since educational systems can vary greatly by region, country, or state.
-
-
-If the entity is regional, at least 50% of the prompts must include region, city, or country references (e.g., "universities in India", "best schools in Delhi NCR", "study abroad agencies in UAE").
-
-
-If the entity is global, include both global and regional queries (e.g., "top study abroad consultants worldwide", "best edtech platforms for K-12").
-
-
-Ensure each prompt is focused on educational institutions and solutions (e.g., education management and admissions, student recruitment for placements, online learning courses, study abroad services, college admissions, placements, scholarships etc.).
-
-
-Reject prompts that focus on non-educational products or concepts like "internal business processes," "best practices," or unrelated generic platforms.
-
-
-Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
-
-
-Every query should lead to actionable answers: institutions, platforms, educational services, that users can discover and evaluate.
-
-
-
-🧭 STEP 1 — ENTITY UNDERSTANDING (THINK DEEPLY)
-Carefully research and reason about the educational institution provided ({{brand_name}}).
 Identify:
-✅ Full, actual name of the entity (e.g., a school, university, or edtech company)
 
+✅ **Full, actual name** of the entity (e.g., a school, university, or edtech company)
+✅ **Headquarters or primary operational region** (Locality and Country) — important for region-based queries (e.g., "Top colleges in India", "Best schools in Delhi NCR").
+✅ **Core business type** (e.g., educational institution, online course provider, study abroad agency, or educational technology company).
+✅ **Industries and verticals** it operates in (e.g., K-12 education, higher education, online learning, study abroad consulting).
+✅ **Products, services, or offerings** (e.g., university admissions, online learning tools, study abroad guidance, test prep, etc.).
+✅ **Main audience segments** (students, parents, teachers, institutions, administrators).
+✅ **Core features, capabilities, and technologies** (e.g., CRMs for student management, learning platforms, admission portals).
+✅ **Key pain points or needs addressed** (e.g., preparation coaching, admissions, placements, learning outcomes).
+✅ **Related or adjacent business functions** (e.g., student recruitment, scholarship guidance, visa counseling).
 
-✅ Headquarters or primary operational region (Locality and Country) — important for region-based queries (e.g., "Top colleges in India", "Best study abroad agencies in the US").
+Use this analysis to define **topical boundaries** — every generated prompt must strictly relate to the education ecosystem and the institution's market domain.
 
+---
 
-✅ Core business type (e.g., educational institution, online course provider, study abroad agency, or educational technology company)
+## 🧩 STEP 2 — TOPIC GENERATION
 
+Based on your analysis, generate **11 high-level topics** that represent major categories of what the entity does, solves, or competes in.
 
-✅ Industries and verticals it operates in (e.g., K-12 education, higher education, online education, study abroad consulting, etc.)
-
-
-✅ Products, services, or offerings (e.g., university admissions, online learning tools, study abroad guidance services, coaching, graduation or post graduation, etc.)
-
-
-✅ Main audience segments (e.g., students, parents, teachers, edtech professionals, higher education institutions, school administrators, etc.)
-
-
-✅ Core features, capabilities, and technologies (e.g., CRM for student management, online learning platforms, admissions software, career counseling tools)
-
-
-✅ Key pain points or needs the entity addresses (e.g., offering best coaching and preparation, graduation or post graduation or Ph.D in various fields, improving learning outcomes, assisting with study abroad applications)
-
-
-✅ Related or adjacent business functions (e.g., student recruitment, online course providers, study visa consulting)
-
-
-Use this full analysis to define the topical boundaries. Every generated prompt must fit strictly within the education ecosystem and relate directly to the institution's offerings or market domain. Reject any prompt that does not.
-
-STEP 2 — TOPIC GENERATION
-Based on your analysis, generate 11 high-level topics that represent the major categories of what this educational entity does, solves, or competes in.
 Each topic should:
-Represent a functional area or solution space relevant to educational institutions or services.
 
+- Represent a **distinct functional area** or solution space relevant to educational institutions or services.
+- Be broad enough for diversity, yet focused enough to remain educational.
+- Use **natural naming**, e.g., "K-12 School Education", "University Admissions for Engineering", "Study Abroad Services".
+- Avoid overlap — every topic must represent a unique lens (e.g., *Admissions Systems* ≠ *Learning Management*).
+- Reflect real-world **discovery and comparison intent**, i.e., how students or parents explore or evaluate institutions or solutions.
 
-Be broad enough to generate diverse prompts, but narrow enough to remain focused on education.
+---
 
+## 💬 STEP 3 — PROMPT (QUERY) GENERATION
 
-Use natural naming (e.g., "University Admissions for Engineering, "K-12 Education Schools", "Study Abroad Services", "Edtech Platforms for Higher Ed").
+For each topic, generate **11 human-style, non-branded queries** that reflect how users discover, explore, or compare institutions and educational solutions.
 
+### 🔍 Prompt Rules
 
-Avoid overlapping topics. Each must cover a distinct need, function, or product area (e.g., admissions platforms vs. learning management systems).
+- Be **completely brand-neutral** (no brand/institution names).
+- Include **both short-tail and long-tail** natural queries.(5 - 8 words)
+- Each query must lead to **actionable discovery or shortlisting or compare or decision making** — real institutions, services, or platforms.
+- If the entity is local/regional, ensure **≥50% prompts include region-specific markers** (city, state, country).
+- Vary tone, structure, and phrasing to mimic **real human search behavior**.
 
+### 💡 Examples of natural phrasing:
 
-Reflect real-world discovery and comparison intent — i.e., how students, parents, or educational professionals would explore or compare similar educational institutions, services or solutions.
+- "top MBA colleges in India 2025"
+- "affordable engineering universities with good placements"
+- "best K-12 schools in Delhi NCR for holistic education"
+- "compare online vs on-campus MBA programs in Europe"
+- "study abroad consultants for STEM programs in Canada"
+- "platforms for managing student admissions in schools"
 
+### 🧱 Each prompt should combine:
 
+- **Intent keyword:** best, top, leading, affordable, compare, alternatives to, software for, platforms for, etc.
+- **Pain point or feature:** fees, placement, course flexibility, scholarships, etc.
+- **Discovery or comparison or shortlisting to elicit decision making focus:** always points to institutions, solutions, or educational services.
 
+---
 
-STEP 3 — PROMPT (QUERY) GENERATION
-Ensure all queries are completely brand-neutral — no specific brand/institution names in any query at all
-For each topic, generate 11 that are short tail and long tail human-style search queries that reflect how real users explore, compare, and discover platforms, tools, or institutions related to the topic.
-Each topic should collectively yield a 360° thematic coverage through its search prompts.
-If the entity is local or regionally-focused, ensure 50% or more of the prompts include region-specific markers (e.g., city, region, country). If the entity operates globally, include a mix of global and regional prompts.
-Each prompt must:
-Sound natural and conversational — like a real long tail or short tail search query.
+REGIONAL CONTEXT VARIATION
 
+Depending on the entity type:
 
-Be relevant to the educational sector and its various services, domain specific niche like academic reputation and ranking, admissions, placements, scholarships, pedagogy, faculty, administration, fees, pricing, student support and counselling, course curriculum, batch sizes, flexibility and accessibility.
+### 🎓 Educational Institutions (universities, colleges, schools)
+- ≥50% of prompts must mention **region, city, or locality** (e.g., "best CBSE schools in Bangalore").
+- Focus on **campuses, programs, admissions, or student services** — not software tools.
+- Use **country-level specificity** unless hyper-local.
+- For global operations, include both **global** and **regional** queries.
+- Avoid forcing locations if irrelevant, but maintain balance for realism.
 
+### 💻 EdTech & Study Abroad Platforms
+- Use **country-level specificity** unless hyper-local.
+- For global operations, include both **global** and **regional** queries.
+- Avoid forcing locations if irrelevant, but maintain balance for realism.
 
-Combine a pain point or feature, or need + search intent keyword (e.g., "best schools for Standard 9th", "affordable admissions in universities in India", "top btech colleges in Noida", "placement opportunities for students", "top MBA colleges india 2025").
+---
 
+## ⚙️ OUTPUT FORMAT (STRICT JSON)
 
-Contain intent triggers when natural, such as:
+Return results using this clean structure:
 
-
-best, top, leading, compare, alternatives to, for, platforms for, software that, solutions for, affordable, upskilling, coaching preparations, etc.
-
-
-Reflect discovery intent — not how-to questions or broad informational articles.
-
-
-Be brand-neutral — do not mention any brand, institution, or company by name.
-
-
-Vary structure and tone slightly to simulate real human search behavior (e.g., "compare engineering btech vs bArch" vs. "which college is best for medical admissions").
-
-
-Ensure each prompt leads to actionable discovery — real institutions and services,
-
-
-
-STEP 4 — REGIONAL CONTEXT VARIATION
-Based on the type of educational entity being analyzed, apply the following strict rules for location-specificity in prompt generation:
-🎓 For Educational Institutions (e.g., universities, colleges, schools):
-At least 50% of all prompts per topic must include region-, city-, or locality-level specificity (e.g., "best colleges in Delhi NCR", "top study abroad consultants in UAE", "engineering colleges in Tamil Nadu").
-
-
-Focus on discovery of institutions, programs, campuses, or academic services, not software tools.
-
-
-Use location markers naturally, reflecting how students, parents, and searchers would evaluate educational options.
-
-
-For EdTech, and Study Abroad Services:
-Use country-level specificity only unless the business is hyper-local.
-
-
-If the entity operates globally, include both global and regional queries (e.g., "top coaching institute for international students in India" vs "best study abroad consultants for engineering in Germany").
-
-
-Do NOT force location names where irrelevant, but make 50%+ of prompts regionally relevant for local or regional entities.
-
-⚙️ STEP 5 — OUTPUT FORMAT (STRICT JSON)
-Return output using this strict and clean JSON structure:
+\`\`\`json
 {
   "company": {
     "name": "<Actual Correct Institution Name>",
@@ -350,38 +266,16 @@ Return output using this strict and clean JSON structure:
     {
       "topic": "<Topic Name>",
       "prompts": [
-        "<non-branded Human-style search phrase 1>",
+        "<non-branded human-style search phrase 1>",
         "<non-branded human-style search phrase 2>",
         "<non-branded human-style search phrase 3>",
         "...",
         "<non-branded human-style search phrase 11>"
       ]
-    },
-    ...
+    }
   ]
 }
-
-
-🧠 STEP 6 — GUIDELINES FOR PROMPT QUALITY
-Prompts must simulate intent-rich, human search behavior that results in platform, service, or institutional discovery.
-
-
-Each prompt must:
-
-
-Be keyword-rich and conversational.
-
-
-Lead directly to discoverable solutions (platforms, institutions, vendors).
-
-
-Include diversity in comparison, feature mentions, pricing, compliance, or regional focus.
-
-
-Stay tightly within the education ecosystem of the analyzed entity.
-
-
-Ensure 50% of prompts reflect region/country specificity if the entity is local/regional.`;
+\`\`\``;
 
 // Prompt #2: Unbiased Query Analysis with Web Search (NO BRAND AWARENESS)
 const PROMPT_2_SYSTEM = `You are an intelligent answering system that generates completely unbiased, fact-based answers to user queries using web search.
@@ -1044,18 +938,12 @@ export async function processBatchQueries(
     // Process all queries in parallel
     const queryPromises = queries.map(async (queryObj, i) => {
       const queryText = queryObj.query_text;
-      const includeInstitutionMention = queryObj.include_institution_mention || false;
 
-      // Construct user prompt - FIXED: Changed from forced inclusion to context hint
-      const userPrompt = includeInstitutionMention
-        ? `Query: ${queryText}\n\nContext: If "${focusBrand}" is genuinely and actually relevant to this query based on your research, consider including a bullet point of this institute name in your answer where appropriate. Do not force include the brand/institute name in the answer if it is not relevant to the query.`
-        : `Query: ${queryText}`;
+      // Construct user prompt - Pure, unbiased query (no institution hints)
+      const userPrompt = `Query: ${queryText}`;
 
-      if (includeInstitutionMention) {
-        console.log(`  ℹ️  Query ${i + 1}/${queries.length} (with context hint): ${queryText.substring(0, 50)}...`);
-      } else {
-        console.log(`  Starting query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
-      }
+      console.log(`  Processing query ${i + 1}/${queries.length}: ${queryText.substring(0, 50)}...`);
+
 
       try {
         const response = await fetchWithRetry(`${API_BASE_URL}/responses`, {

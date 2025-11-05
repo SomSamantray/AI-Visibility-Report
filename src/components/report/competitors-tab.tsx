@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, TrendingUp, Trophy, Award } from 'lucide-react';
+import { Users } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -57,54 +57,12 @@ export default function CompetitorsTab({ competitors, institutionName }: Competi
 
   return (
     <div className="space-y-8">
-      {/* Summary Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-200">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">{competitors.length}</div>
-              <div className="text-sm text-gray-500">Total Competitors</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
-              <Trophy className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">
-                {topCompetitors[0]?.brand_name?.substring(0, 12) || 'N/A'}
-              </div>
-              <div className="text-sm text-gray-500">Top Competitor</div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center border border-orange-200">
-              <Award className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">{totalMentions}</div>
-              <div className="text-sm text-gray-500">Total Competitor Mentions</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-8">
         {/* Mentions Bar Chart */}
         <Card className="p-8 bg-white border-gray-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-900">
-            <TrendingUp className="w-5 h-5 text-purple-600" />
-            Top 10 Competitors by Mentions
+          <h3 className="text-xl font-bold mb-6 text-gray-900">
+            Top Competitor by Mentions
           </h3>
           <ResponsiveContainer width="100%" height={400}>
             <BarChart
@@ -134,9 +92,8 @@ export default function CompetitorsTab({ competitors, institutionName }: Competi
 
         {/* Average Rank Comparison */}
         <Card className="p-8 bg-white border-gray-200 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2 text-gray-900">
-            <Trophy className="w-5 h-5 text-blue-600" />
-            Top 5 Competitors: Rank Performance
+          <h3 className="text-xl font-bold mb-6 text-gray-900">
+            Top 5 Competitors Rank Performance
           </h3>
           <ResponsiveContainer width="100%" height={400}>
             <RadarChart data={radarData}>
@@ -159,39 +116,25 @@ export default function CompetitorsTab({ competitors, institutionName }: Competi
         </Card>
       </div>
 
-      {/* All Competitors List */}
+      {/* All Competitors List - Top 30 */}
       <Card className="p-8 bg-white border-gray-200 shadow-sm">
-        <h3 className="text-lg font-semibold mb-6 text-gray-900">All Competitors</h3>
+        <h3 className="text-xl font-bold mb-6 text-gray-900">All Competitors</h3>
         <div className="space-y-3">
-          {competitors.map((competitor, index) => {
+          {competitors.slice(0, 30).map((competitor, index) => {
             const mentionPercent = ((competitor.mention_count / totalMentions) * 100).toFixed(1);
-            const isTopPerformer = index < 3;
 
             return (
               <div
                 key={competitor.id}
-                className={`flex items-center justify-between p-5 rounded-lg border transition-colors ${
-                  isTopPerformer
-                    ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200'
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                }`}
+                className="flex items-center justify-between p-5 rounded-lg border bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center gap-4 flex-1">
-                  <div
-                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                      isTopPerformer
-                        ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white'
-                        : 'bg-white text-gray-600 border-2 border-gray-300'
-                    }`}
-                  >
+                  <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold bg-white text-gray-700 border-2 border-gray-300">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="mb-1">
                       <span className="font-semibold text-gray-900">{competitor.brand_name || 'Unknown'}</span>
-                      {isTopPerformer && (
-                        <Trophy className="w-4 h-4 text-yellow-500" />
-                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary" className="text-xs bg-white text-gray-700 border-gray-300">

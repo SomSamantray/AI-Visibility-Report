@@ -34,7 +34,6 @@ interface PromptsTabProps {
 export default function PromptsTab({ topics, institutionName }: PromptsTabProps) {
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedQueries, setExpandedQueries] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
 
   const toggleTopic = (topicId: string) => {
     const newExpanded = new Set(expandedTopics);
@@ -73,22 +72,15 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
   const mentionedQueries = topics.reduce((sum, t) =>
     sum + t.queries.filter(q => (q.focused_brand_rank ?? 0) > 0).length, 0
   );
-  const overallVisibility = totalQueries > 0 ? Math.round((mentionedQueries / totalQueries) * 100) : 0;
-
-  // Filter topics based on search
-  const filteredTopics = topics.filter(topic =>
-    topic.topic_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.queries.some(q => q.query_text.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   return (
     <div className="space-y-8">
-      {/* Summary Cards */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      {/* Summary Cards - Only 3 cards */}
+      <div className="grid md:grid-cols-3 gap-6">
+        <Card className="p-6 bg-white border-gray-200 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-200">
-              <FileText className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+              <FileText className="w-6 h-6 text-gray-600" />
             </div>
             <div>
               <div className="text-3xl font-bold text-gray-900">{totalTopics}</div>
@@ -97,10 +89,10 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
           </div>
         </Card>
 
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="p-6 bg-white border-gray-200 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-200">
-              <MessageSquare className="w-6 h-6 text-purple-600" />
+            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+              <MessageSquare className="w-6 h-6 text-gray-600" />
             </div>
             <div>
               <div className="text-3xl font-bold text-gray-900">{totalQueries}</div>
@@ -109,10 +101,10 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
           </div>
         </Card>
 
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+        <Card className="p-6 bg-white border-gray-200 shadow-sm">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center border border-green-200">
-              <CheckCircle2 className="w-6 h-6 text-green-600" />
+            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-gray-600" />
             </div>
             <div>
               <div className="text-3xl font-bold text-gray-900">{mentionedQueries}</div>
@@ -120,41 +112,28 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
             </div>
           </div>
         </Card>
-
-        <Card className="p-6 bg-white border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center border border-orange-200">
-              <Target className="w-6 h-6 text-orange-600" />
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-gray-900">{overallVisibility}%</div>
-              <div className="text-sm text-gray-500">Visibility</div>
-            </div>
-          </div>
-        </Card>
       </div>
-
-      {/* Search Bar */}
-      <Card className="p-6 bg-white border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Search className="w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search topics or queries..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 outline-none text-gray-900 placeholder-gray-400"
-          />
-        </div>
-      </Card>
 
       {/* Topics Table */}
       <div className="space-y-4">
-        {filteredTopics
+        {topics
           .sort((a, b) => a.topic_order - b.topic_order)
           .map((topic) => {
             const mentioned = topic.queries.filter(q => (q.focused_brand_rank ?? 0) > 0).length;
             const visibilityPercent = Math.round((mentioned / topic.queries.length) * 100);
+            const relevancyPercent = visibilityPercent; // Same as visibility per topic
+
+            // Calculate average rank (only for queries where brand was mentioned)
+            const rankedQueries = topic.queries.filter(q => (q.focused_brand_rank ?? 0) > 0);
+            const avgRank = rankedQueries.length > 0
+              ? (rankedQueries.reduce((sum, q) => sum + (q.focused_brand_rank || 0), 0) / rankedQueries.length).toFixed(1)
+              : '-';
+
+            // Calculate total citations for this topic
+            const totalCitations = topic.queries.reduce((sum, q) =>
+              sum + (q.websites_cited?.length || 0), 0
+            );
+
             const isExpanded = expandedTopics.has(topic.id);
 
             return (
@@ -177,17 +156,22 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                       {topic.queries.length} queries
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="h-full bg-green-500 rounded-full transition-all"
-                          style={{ width: `${visibilityPercent}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 min-w-[3rem] text-right">
-                        {visibilityPercent}%
-                      </span>
+                  <div className="flex items-center gap-8">
+                    <div className="text-center min-w-[80px]">
+                      <div className="text-xs text-gray-500 uppercase mb-1">Visibility</div>
+                      <div className="text-lg font-bold text-gray-900">{visibilityPercent}%</div>
+                    </div>
+                    <div className="text-center min-w-[80px]">
+                      <div className="text-xs text-gray-500 uppercase mb-1">Relevancy</div>
+                      <div className="text-lg font-bold text-gray-900">{relevancyPercent}%</div>
+                    </div>
+                    <div className="text-center min-w-[80px]">
+                      <div className="text-xs text-gray-500 uppercase mb-1">Avg Rank</div>
+                      <div className="text-lg font-bold text-gray-900">{avgRank}</div>
+                    </div>
+                    <div className="text-center min-w-[80px]">
+                      <div className="text-xs text-gray-500 uppercase mb-1">Citations</div>
+                      <div className="text-lg font-bold text-gray-900">{totalCitations}</div>
                     </div>
                   </div>
                 </button>
@@ -249,7 +233,7 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                 {/* Expanded Query Answer Section */}
                                 {isQueryExpanded && (
                                   <tr>
-                                    <td colSpan={4} className="bg-gradient-to-br from-blue-50/30 via-purple-50/20 to-pink-50/20">
+                                    <td colSpan={4} className="bg-gray-50">
                                       <div className="px-8 py-6 space-y-6">
                                         {/* Brands Mentioned Section - TOP */}
                                         <div>
@@ -265,28 +249,17 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                             {query.brands_mentioned && query.brands_mentioned.length > 0 ? (
                                               query.brands_mentioned.map((brand, brandIndex) => {
                                                 const isFocusBrand = brand.toLowerCase() === institutionName.toLowerCase();
-                                                const rankPosition = brandIndex + 1;
 
                                                 return (
                                                   <div
                                                     key={brandIndex}
-                                                    className={`px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-sm ${
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                                                       isFocusBrand
-                                                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-green-500/30'
-                                                        : rankPosition === 1
-                                                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-blue-500/20'
-                                                        : rankPosition === 2
-                                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-purple-500/20'
-                                                        : 'bg-white text-gray-700 border-2 border-gray-300'
+                                                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                                                        : 'bg-gray-100 text-gray-700 border border-gray-200'
                                                     }`}
                                                   >
-                                                    {isFocusBrand && <CheckCircle2 className="w-4 h-4" />}
-                                                    <span>{brand}</span>
-                                                    {!isFocusBrand && (
-                                                      <Badge className="bg-white/20 text-white border-0 text-xs px-2 py-0">
-                                                        #{rankPosition}
-                                                      </Badge>
-                                                    )}
+                                                    {brand}
                                                   </div>
                                                 );
                                               })
@@ -348,9 +321,9 @@ export default function PromptsTab({ topics, institutionName }: PromptsTabProps)
                                               query.websites_cited.map((source, sourceIndex) => (
                                                 <div
                                                   key={sourceIndex}
-                                                  className="px-4 py-3 bg-white rounded-lg border border-gray-200 text-sm text-gray-700 font-medium flex items-center gap-2 shadow-sm hover:shadow-md transition-shadow"
+                                                  className="px-4 py-3 bg-white rounded-lg border border-gray-200 text-sm text-gray-700 font-medium flex items-center gap-2"
                                                 >
-                                                  <div className="w-6 h-6 bg-orange-500 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold text-white">
+                                                  <div className="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0 text-xs font-bold text-gray-700">
                                                     {sourceIndex + 1}
                                                   </div>
                                                   <span className="truncate">{source}</span>
